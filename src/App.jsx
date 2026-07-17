@@ -8,7 +8,7 @@ import Calculator from './components/Calculator'
 const TABS = [
   { id: 'prices', label: '시세표', icon: '💰' },
   { id: 'manual', label: '등급 판정', icon: '📋' },
-  { id: 'calc', label: '마진 계산기', icon: '🧮' },
+  { id: 'calc', label: '매입 계산기', icon: '🧮' },
 ]
 
 export default function App() {

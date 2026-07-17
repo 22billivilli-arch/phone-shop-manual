@@ -131,25 +131,13 @@ export default function Calculator() {
 
       {/* 결과 */}
       <section className="rounded-2xl border-2 border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-500/40 dark:bg-indigo-500/10">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2 rounded-xl bg-white p-4 text-center shadow-sm dark:bg-slate-900">
-            <p className="text-xs font-bold text-slate-500">제시 매입가</p>
-            <p className="tnum mt-1 text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">{won(result.buy)}<span className="text-base">원</span></p>
-            <p className="mt-1 text-[11px] text-slate-400 tnum">
-              {won(price)} × {Math.round(result.rate * 100)}%
-              {result.deduction > 0 && <> − 감가 {won(result.deduction)}</>}
-            </p>
-          </div>
-          <div className="rounded-xl bg-white p-3 text-center shadow-sm dark:bg-slate-900">
-            <p className="text-xs font-bold text-slate-500">예상 판매가</p>
-            <p className="tnum mt-1 text-xl font-bold">{won(result.sell)}</p>
-          </div>
-          <div className="rounded-xl bg-white p-3 text-center shadow-sm dark:bg-slate-900">
-            <p className="text-xs font-bold text-slate-500">예상 마진</p>
-            <p className={'tnum mt-1 text-xl font-bold ' + (result.margin >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500')}>
-              {won(result.margin)}
-            </p>
-          </div>
+        <div className="rounded-xl bg-white p-5 text-center shadow-sm dark:bg-slate-900">
+          <p className="text-xs font-bold text-slate-500">제시 매입가</p>
+          <p className="tnum mt-1 text-4xl font-extrabold text-indigo-600 dark:text-indigo-400">{won(result.buy)}<span className="text-base">원</span></p>
+          <p className="mt-1.5 text-[11px] text-slate-400 tnum">
+            {won(price)} × {Math.round(result.rate * 100)}%
+            {result.deduction > 0 && <> − 감가 {won(result.deduction)}</>}
+          </p>
         </div>
       </section>
 
