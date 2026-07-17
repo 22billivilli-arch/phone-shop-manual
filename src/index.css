@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    font-feature-settings: 'tnum';
+  }
+}
+
+/* 숫자는 고정폭 정렬 */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
