@@ -178,12 +178,12 @@ export default function Manual() {
                 <span className="text-xs text-slate-500">{g.sub}</span>
               </div>
               <p className="mt-0.5 text-sm font-semibold">{g.def}</p>
-              <p className="mt-1 text-xs font-bold text-slate-500 dark:text-slate-400">매입배율 {g.rate}</p>
+              <p className="mt-1 text-xs font-bold text-slate-500 dark:text-slate-400">🔋 {g.battery}</p>
               <dl className="mt-3 space-y-2 border-t border-black/5 pt-3 dark:border-white/10">
                 {grades.criteria.map((c) => (
                   <div key={c.label}>
                     <dt className="text-[11px] font-bold text-slate-400">{c.label}</dt>
-                    <dd className="text-xs leading-snug">{c[g.grade[0]]}</dd>
+                    <dd className="text-xs leading-snug">{c[g.key]}</dd>
                   </div>
                 ))}
               </dl>
