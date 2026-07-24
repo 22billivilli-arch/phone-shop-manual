@@ -1,0 +1,18 @@
+# 웹 루트 .htaccess — SPA 라우팅(존재하지 않는 경로는 index.html로) + http→https
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # https 강제 — SSL 적용 확인 후 아래 3줄 주석 해제
+  # RewriteCond %{HTTPS} !=on
+  # RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # 실제 파일/폴더/ api 는 그대로
+  RewriteCond %{REQUEST_URI} ^/api/ [OR]
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # 나머지는 SPA 진입점으로
+  RewriteRule ^ index.html [L]
+</IfModule>

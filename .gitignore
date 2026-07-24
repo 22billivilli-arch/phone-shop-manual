@@ -8,3 +8,6 @@ dist-ssr
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# 서버 실제 비밀번호 (카페24에만 존재)
+server/config.php

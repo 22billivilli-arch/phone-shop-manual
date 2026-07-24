@@ -1,12 +1,20 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import prices from '../data/prices.json'
 import { useLocalStorage, won } from '../lib/hooks'
+import { api } from '../lib/api'
 
 // 만원 → 원
 const toWon = (manwon) => Math.round((manwon || 0) * 10000)
 
-export default function Cart({ cart, setCart }) {
+export default function Cart({ cart, setCart, auth }) {
   const [store, setStore] = useLocalStorage('psm_store', { shop: '', owner: '', phone: '', addr: '' })
+  const [saved, setSaved] = useState('')
+  const member = auth?.role === 'member' ? auth.member : null
+
+  // 로그인한 거래처면 정보 자동 입력
+  useEffect(() => {
+    if (member) setStore({ shop: member.shop_name || '', owner: member.name || '', phone: member.phone || '', addr: member.shop_addr || '' })
+  }, [member?.id])
 
   const setField = (k, v) => setStore((s) => ({ ...s, [k]: v }))
   const setQty = (id, q) => setCart((c) => c.map((it) => (it.id === id ? { ...it, qty: Math.max(1, Number(q) || 1) } : it)))
@@ -17,9 +25,19 @@ export default function Cart({ cart, setCart }) {
   const totalWon = useMemo(() => cart.reduce((s, it) => s + toWon(it.unit) * it.qty, 0), [cart])
   const totalQty = useMemo(() => cart.reduce((s, it) => s + it.qty, 0), [cart])
 
-  const submit = () => {
+  const submit = async () => {
     if (!cart.length) return
-    openContract({ store, cart, totalWon, totalQty })
+    const now = new Date()
+    const docNo = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
+    // 서버에 매입 자료로 저장 (백엔드 있으면). 실패해도 계약서는 발행.
+    try {
+      await api.post('order_submit.php', { doc_no: docNo, store, items: cart })
+      setSaved('서버에 매입 자료로 저장되었습니다.')
+    } catch {
+      setSaved('※ 서버 저장은 안 됐지만(오프라인/미연결) 계약서는 발행됩니다.')
+    }
+    openContract({ store, cart, totalWon, totalQty, docNo })
+    setTimeout(() => setSaved(''), 4000)
   }
 
   return (
@@ -94,6 +112,7 @@ export default function Cart({ cart, setCart }) {
           <button onClick={submit} className="w-full rounded-xl bg-indigo-600 py-3.5 text-sm font-extrabold text-white active:bg-indigo-700">
             📄 출고 신청 · 매매계약서 작성
           </button>
+          {saved && <p className="mt-2 text-center text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">{saved}</p>}
         </section>
       )}
     </div>
@@ -101,10 +120,9 @@ export default function Cart({ cart, setCart }) {
 }
 
 // ── 매매계약서 (새 창 인쇄/PDF) ──
-function openContract({ store, cart, totalWon, totalQty }) {
+function openContract({ store, cart, totalWon, totalQty, docNo }) {
   const now = new Date()
   const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  const docNo = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
   const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   const wonf = (n) => Math.round(n || 0).toLocaleString('ko-KR')
 

@@ -1,0 +1,9 @@
+# /uploads/.htaccess — 회원 사진(주민증/통장) 직접 웹 접근 전면 차단.
+# 오직 /api/image.php (관리자 세션)로만 열람 가능.
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+  Order allow,deny
+  Deny from all
+</IfModule>
