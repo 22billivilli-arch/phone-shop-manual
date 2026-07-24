@@ -154,7 +154,7 @@ function Quiz() {
 }
 
 export default function Manual() {
-  const { principles, grades, partCriteria, functionDeductions, prohibitions } = manual
+  const { principles, grades, partCriteria, functionDeductions, prohibitions, tradeRules } = manual
 
   return (
     <div className="space-y-8">
@@ -234,13 +234,38 @@ export default function Manual() {
         <Checklist />
       </Section>
 
-      {/* 6. 판정 예시 */}
-      <Section n="6" title="판정 예시">
+      {/* 5-2. 거래 규정 / 검수 방법 */}
+      {tradeRules && (
+        <Section n="6" title="거래 규정 · 검수 방법">
+          <div className="space-y-2">
+            {tradeRules.map((r, i) => (
+              <div
+                key={i}
+                className={
+                  'rounded-2xl border p-3.5 ' +
+                  (i === 0
+                    ? 'border-indigo-300 bg-indigo-50 dark:border-indigo-500/40 dark:bg-indigo-500/10'
+                    : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900')
+                }
+              >
+                <div className="mb-1 flex items-center gap-1.5">
+                  {i === 0 && <span>🪪</span>}
+                  <span className={'text-sm font-bold ' + (i === 0 ? 'text-indigo-700 dark:text-indigo-300' : '')}>{r.label}</span>
+                </div>
+                <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">{r.detail}</p>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* 7. 판정 예시 */}
+      <Section n="7" title="판정 예시">
         <Quiz />
       </Section>
 
-      {/* 7. 금지 사항 */}
-      <Section n="7" title="금지 사항">
+      {/* 8. 금지 사항 */}
+      <Section n="8" title="금지 사항">
         <div className="space-y-2">
           {prohibitions.map((p, i) => (
             <div key={i} className="flex items-center gap-2.5 rounded-xl border-2 border-red-300 bg-red-50 px-4 py-3 dark:border-red-500/40 dark:bg-red-500/10">

@@ -21,10 +21,15 @@ export default function App() {
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
           <div>
-            <h1 className="text-base font-extrabold leading-tight sm:text-lg">📱 중고폰 매장 매뉴얼</h1>
+            <h1 className="text-base font-extrabold leading-tight sm:text-lg">📱 {prices.source} 매입 시세</h1>
             <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-              시세 기준일: <span className="tnum font-semibold">{prices.baseDate}</span>
+              기준일 <span className="tnum font-semibold">{prices.baseDate}</span>
+              <span className="mx-1 text-slate-300 dark:text-slate-600">·</span>
+              <span className="font-semibold text-indigo-600 dark:text-indigo-400">{prices.updateNote}</span>
             </p>
+            <a href={`tel:${prices.tel}`} className="mt-0.5 inline-block text-[11px] font-bold text-slate-600 dark:text-slate-300">
+              📞 {prices.tel}
+            </a>
           </div>
           <button
             onClick={() => setDark((d) => !d)}

@@ -143,7 +143,8 @@ export default function Calculator() {
           </p>
           {model && model.dead != null && (
             <p className="mt-2 text-[11px] text-slate-400">
-              💀 폐폰(부팅불가 등) 매입가 <b className="text-slate-600 dark:text-slate-300">+{manwon(model.dead)}만원</b>
+              💀 완전 폐급(부팅 불가 등) <b className="text-slate-600 dark:text-slate-300">부품 매입가 {manwon(model.dead)}만원</b>
+              <span className="ml-1 opacity-70">— 등급가와 별개인 단독 매입가</span>
             </p>
           )}
         </div>
