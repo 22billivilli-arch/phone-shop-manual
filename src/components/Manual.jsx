@@ -5,12 +5,16 @@ import { useLocalStorage } from '../lib/hooks'
 const GRADE_COLORS = {
   emerald: 'border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10',
   sky: 'border-sky-300 dark:border-sky-500/40 bg-sky-50 dark:bg-sky-500/10',
+  indigo: 'border-indigo-300 dark:border-indigo-500/40 bg-indigo-50 dark:bg-indigo-500/10',
   amber: 'border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10',
+  rose: 'border-rose-300 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-500/10',
 }
 const GRADE_TEXT = {
   emerald: 'text-emerald-700 dark:text-emerald-300',
   sky: 'text-sky-700 dark:text-sky-300',
+  indigo: 'text-indigo-700 dark:text-indigo-300',
   amber: 'text-amber-700 dark:text-amber-300',
+  rose: 'text-rose-700 dark:text-rose-300',
 }
 
 function Section({ n, title, children }) {
@@ -169,8 +173,8 @@ export default function Manual() {
       </Section>
 
       {/* 2. 등급별 기준 */}
-      <Section n="2" title="S / A / B급 비교">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <Section n="2" title="등급 판정 기준 (A / A- / B+ / 중고 / 액파)">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {grades.items.map((g) => (
             <div key={g.grade} className={'rounded-2xl border p-4 ' + GRADE_COLORS[g.color]}>
               <div className="flex items-baseline gap-1.5">
