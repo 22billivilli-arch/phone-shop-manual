@@ -1,19 +1,24 @@
 import { useState } from 'react'
 import prices from './data/prices.json'
-import { useDarkMode } from './lib/hooks'
+import { useDarkMode, useLocalStorage } from './lib/hooks'
 import PriceTable from './components/PriceTable'
 import Manual from './components/Manual'
 import Calculator from './components/Calculator'
+import Cart from './components/Cart'
 
 const TABS = [
   { id: 'prices', label: '시세표', icon: '💰' },
   { id: 'manual', label: '등급 판정', icon: '📋' },
   { id: 'calc', label: '매입 계산기', icon: '🧮' },
+  { id: 'cart', label: '출고 신청', icon: '📤' },
 ]
 
 export default function App() {
   const [tab, setTab] = useState('prices')
   const [dark, setDark] = useDarkMode()
+  const [cart, setCart] = useLocalStorage('psm_cart', [])
+  const cartQty = cart.reduce((n, it) => n + (Number(it.qty) || 1), 0)
+  const addToCart = (item) => setCart((c) => [...c, item])
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -46,7 +51,8 @@ export default function App() {
       <main className="mx-auto max-w-3xl px-3 pb-24 pt-4">
         {tab === 'prices' && <PriceTable />}
         {tab === 'manual' && <Manual />}
-        {tab === 'calc' && <Calculator />}
+        {tab === 'calc' && <Calculator onAdd={addToCart} />}
+        {tab === 'cart' && <Cart cart={cart} setCart={setCart} />}
       </main>
 
       {/* 하단 탭바 (모바일 퍼스트) */}
@@ -59,13 +65,20 @@ export default function App() {
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 className={
-                  'flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-semibold transition-colors ' +
+                  'relative flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-semibold transition-colors ' +
                   (on
                     ? 'text-indigo-600 dark:text-indigo-400'
                     : 'text-slate-400 dark:text-slate-500')
                 }
               >
-                <span className="text-xl leading-none">{t.icon}</span>
+                <span className="relative text-xl leading-none">
+                  {t.icon}
+                  {t.id === 'cart' && cartQty > 0 && (
+                    <span className="absolute -right-2.5 -top-1 min-w-[16px] rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-4 text-white">
+                      {cartQty}
+                    </span>
+                  )}
+                </span>
                 {t.label}
               </button>
             )

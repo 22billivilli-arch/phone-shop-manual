@@ -11,10 +11,13 @@ const GRADE_BTN = {
   rose: 'border-rose-500 bg-rose-500 text-white',
 }
 
-export default function Calculator() {
+export default function Calculator({ onAdd }) {
   const [idx, setIdx] = useState('')
   const [grade, setGrade] = useState('A')
   const [checked, setChecked] = useState({})
+  const [imei, setImei] = useState('')
+  const [qty, setQty] = useState(1)
+  const [added, setAdded] = useState(false)
 
   const model = idx === '' ? null : prices.models[Number(idx)]
 
@@ -42,9 +45,24 @@ export default function Calculator() {
   }, [model, grade, checked, deductions])
 
   const toggle = (id) => setChecked((c) => ({ ...c, [id]: !c[id] }))
-  const pickModel = (v) => { setIdx(v); setChecked({}); setGrade('A') }
+  const pickModel = (v) => { setIdx(v); setChecked({}); setGrade('A'); setImei(''); setQty(1) }
 
   const gradeMeta = grades.find((g) => g.key === grade) || prices.grades.find((g) => g.key === grade)
+
+  const addToCart = () => {
+    if (!model || !onAdd) return
+    onAdd({
+      id: Date.now() + '_' + Math.floor(Math.random() * 1e6),
+      brand: model.brand, name: model.name, cap: model.cap, code: model.code || '',
+      grade, gradeLabel: gradeMeta?.label || grade,
+      deductLabels: deductions.filter((d) => checked[d.id]).map((d) => d.label),
+      base: result.base, deduction: result.deduction, unit: result.buy,
+      imei: imei.trim(), qty: Math.max(1, Number(qty) || 1),
+    })
+    setAdded(true)
+    setImei('')
+    setTimeout(() => setAdded(false), 1400)
+  }
 
   return (
     <div className="space-y-4">
@@ -149,6 +167,41 @@ export default function Calculator() {
           )}
         </div>
       </section>
+
+      {/* 담기 (출고 신청용 장바구니) */}
+      {onAdd && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="mb-2 flex items-center gap-2">
+            <input
+              value={imei}
+              onChange={(e) => setImei(e.target.value)}
+              placeholder="IMEI (선택)"
+              inputMode="numeric"
+              className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
+            />
+            <div className="flex items-center rounded-xl border border-slate-300 dark:border-slate-700">
+              <button onClick={() => setQty((q) => Math.max(1, Number(q) - 1))} className="px-3 py-2 text-lg font-bold text-slate-500">−</button>
+              <input
+                value={qty}
+                onChange={(e) => setQty(e.target.value.replace(/\D/g, '') || 1)}
+                inputMode="numeric"
+                className="tnum w-10 border-x border-slate-200 bg-transparent py-2 text-center text-sm dark:border-slate-700"
+              />
+              <button onClick={() => setQty((q) => Number(q) + 1)} className="px-3 py-2 text-lg font-bold text-slate-500">+</button>
+            </div>
+          </div>
+          <button
+            onClick={addToCart}
+            disabled={!model}
+            className={
+              'w-full rounded-xl py-3 text-sm font-extrabold text-white transition-colors ' +
+              (added ? 'bg-emerald-600' : model ? 'bg-indigo-600 active:bg-indigo-700' : 'bg-slate-300 dark:bg-slate-700')
+            }
+          >
+            {added ? '✓ 담겼습니다 (출고 신청 탭에서 확인)' : '🛒 출고 목록에 담기'}
+          </button>
+        </section>
+      )}
 
       <p className="px-1 text-[11px] text-slate-400">
         ※ 제시가 = 등급 매입가 − 상태 차감 합계. 차감값은 HK 시세표({prices.baseDate}) 실제 항목입니다. 최종 지급은 검수 후 확정하세요.
