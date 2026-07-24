@@ -4,10 +4,10 @@ require_admin();
 $q = trim($_GET['q'] ?? '');
 if ($q !== '') {
   $like = '%' . $q . '%';
-  $stmt = db()->prepare('SELECT id, name, phone, shop_name, shop_addr, id_card_file, bankbook_file, status, created_at FROM members WHERE name LIKE ? OR phone LIKE ? OR shop_name LIKE ? ORDER BY id DESC');
+  $stmt = db()->prepare('SELECT id, name, phone, shop_name, shop_addr, bank_name, account_no, id_card_file, bankbook_file, status, created_at FROM members WHERE name LIKE ? OR phone LIKE ? OR shop_name LIKE ? ORDER BY id DESC');
   $stmt->execute([$like, $like, $like]);
 } else {
-  $stmt = db()->query('SELECT id, name, phone, shop_name, shop_addr, id_card_file, bankbook_file, status, created_at FROM members ORDER BY id DESC');
+  $stmt = db()->query('SELECT id, name, phone, shop_name, shop_addr, bank_name, account_no, id_card_file, bankbook_file, status, created_at FROM members ORDER BY id DESC');
 }
 $rows = $stmt->fetchAll();
 foreach ($rows as &$r) {

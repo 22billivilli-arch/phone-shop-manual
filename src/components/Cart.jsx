@@ -6,14 +6,17 @@ import { api } from '../lib/api'
 // 만원 → 원
 const toWon = (manwon) => Math.round((manwon || 0) * 10000)
 
+// 회사 직인 이미지 — 추후 제공받으면 여기에 base64 dataURL 을 넣으면 계약서 갑 서명란에 자동 표시됨
+const SEAL = ''
+
 export default function Cart({ cart, setCart, auth }) {
-  const [store, setStore] = useLocalStorage('psm_store', { shop: '', owner: '', phone: '', addr: '' })
+  const [store, setStore] = useLocalStorage('psm_store', { shop: '', owner: '', phone: '', addr: '', bank: '', account: '' })
   const [saved, setSaved] = useState('')
   const member = auth?.role === 'member' ? auth.member : null
 
   // 로그인한 거래처면 정보 자동 입력
   useEffect(() => {
-    if (member) setStore({ shop: member.shop_name || '', owner: member.name || '', phone: member.phone || '', addr: member.shop_addr || '' })
+    if (member) setStore({ shop: member.shop_name || '', owner: member.name || '', phone: member.phone || '', addr: member.shop_addr || '', bank: member.bank_name || '', account: member.account_no || '' })
   }, [member?.id])
 
   const setField = (k, v) => setStore((s) => ({ ...s, [k]: v }))
@@ -25,19 +28,22 @@ export default function Cart({ cart, setCart, auth }) {
   const totalWon = useMemo(() => cart.reduce((s, it) => s + toWon(it.unit) * it.qty, 0), [cart])
   const totalQty = useMemo(() => cart.reduce((s, it) => s + it.qty, 0), [cart])
 
-  const submit = async () => {
+  const submit = async (deliveryType) => {
     if (!cart.length) return
     const now = new Date()
     const docNo = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
-    // 서버에 매입 자료로 저장 (백엔드 있으면). 실패해도 계약서는 발행.
+    let base
     try {
-      await api.post('order_submit.php', { doc_no: docNo, store, items: cart })
-      setSaved('서버에 매입 자료로 저장되었습니다.')
+      await api.post('order_submit.php', { doc_no: docNo, store, items: cart, delivery_type: deliveryType })
+      base = deliveryType === '픽업'
+        ? '✅ 픽업 신청 완료! HK에서 방문 시간을 문자로 안내드립니다.'
+        : '✅ 택배 신청 완료! 아래 발송지로 보내주세요. (매입 자료 저장됨)'
     } catch {
-      setSaved('※ 서버 저장은 안 됐지만(오프라인/미연결) 계약서는 발행됩니다.')
+      base = '※ 서버 저장은 안 됐지만(미연결) 계약서는 발행됩니다.'
     }
-    openContract({ store, cart, totalWon, totalQty, docNo })
-    setTimeout(() => setSaved(''), 4000)
+    setSaved(base)
+    openContract({ store, cart, totalWon, totalQty, docNo, deliveryType })
+    setTimeout(() => setSaved(''), 8000)
   }
 
   return (
@@ -54,8 +60,11 @@ export default function Cart({ cart, setCart, auth }) {
           <input value={store.owner} onChange={(e) => setField('owner', e.target.value)} placeholder="대표자명" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
           <input value={store.phone} onChange={(e) => setField('phone', e.target.value)} placeholder="연락처" inputMode="tel" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
           <input value={store.addr} onChange={(e) => setField('addr', e.target.value)} placeholder="매장 주소" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
+          <input value={store.bank} onChange={(e) => setField('bank', e.target.value)} placeholder="은행" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
+          <input value={store.account} onChange={(e) => setField('account', e.target.value)} placeholder="계좌번호" inputMode="numeric" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
         </div>
-        <p className="text-[11px] text-slate-400">※ 회원가입 연동 후에는 로그인 정보로 자동 입력됩니다.</p>
+        <p className="rounded-lg bg-amber-50 px-2 py-1.5 text-[11px] text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">💳 정산 계좌는 <b>가입 시 등록한 통장사본과 동일한 계좌</b>여야 합니다.</p>
+        <p className="text-[11px] text-slate-400">※ 로그인하면 위 정보가 자동 입력됩니다.</p>
       </section>
 
       {/* 담은 목록 */}
@@ -109,10 +118,22 @@ export default function Cart({ cart, setCart, auth }) {
             <span className="text-sm font-bold">합계 <span className="text-slate-400">({totalQty}대)</span></span>
             <span className="tnum text-2xl font-extrabold text-indigo-600 dark:text-indigo-400">{won(totalWon)}원</span>
           </div>
-          <button onClick={submit} className="w-full rounded-xl bg-indigo-600 py-3.5 text-sm font-extrabold text-white active:bg-indigo-700">
-            📄 출고 신청 · 매매계약서 작성
-          </button>
-          {saved && <p className="mt-2 text-center text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">{saved}</p>}
+          <div className="mb-3 rounded-xl bg-white/70 p-3 text-[11px] leading-relaxed dark:bg-slate-900/50">
+            <div className="font-bold text-slate-700 dark:text-slate-200">🚚 택배 발송지</div>
+            <div className="mt-0.5 text-slate-600 dark:text-slate-300">
+              {prices.addr}<br />
+              <b>{prices.source}</b> · {prices.tel}
+            </div>
+            <button
+              onClick={() => { navigator.clipboard?.writeText(`${prices.addr} ${prices.source} ${prices.tel}`); setSaved('발송지 주소가 복사되었습니다.'); setTimeout(() => setSaved(''), 3000) }}
+              className="mt-1.5 rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-500 dark:border-slate-600">📋 주소 복사</button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => submit('택배')} className="rounded-xl bg-indigo-600 py-3.5 text-sm font-extrabold text-white active:bg-indigo-700">🚚 택배 신청</button>
+            <button onClick={() => submit('픽업')} className="rounded-xl bg-emerald-600 py-3.5 text-sm font-extrabold text-white active:bg-emerald-700">🏠 픽업 신청</button>
+          </div>
+          <p className="mt-1 text-center text-[11px] text-slate-500">두 버튼 모두 <b>매매계약서</b>가 함께 발행됩니다. 픽업은 대구 전 지역 당일 방문.</p>
+          {saved && <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-center text-[12px] font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">{saved}</p>}
         </section>
       )}
     </div>
@@ -120,7 +141,7 @@ export default function Cart({ cart, setCart, auth }) {
 }
 
 // ── 매매계약서 (새 창 인쇄/PDF) ──
-function openContract({ store, cart, totalWon, totalQty, docNo }) {
+function openContract({ store, cart, totalWon, totalQty, docNo, deliveryType }) {
   const now = new Date()
   const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -156,12 +177,21 @@ function openContract({ store, cart, totalWon, totalQty, docNo }) {
     th{background:#f0f0f0}
     td.c{text-align:center} td.r{text-align:right}
     tfoot td{font-weight:bold;background:#fafafa}
+    .deliv{font-size:12px;color:#333;background:#f4f6ff;border:1px solid #ccd4ff;border-radius:6px;padding:8px 12px;margin-bottom:12px}
     .terms{font-size:11px;color:#444;line-height:1.7;border:1px solid #ddd;border-radius:6px;padding:10px 12px;margin-bottom:18px}
-    .sign{display:flex;justify-content:space-between;gap:20px;margin-top:24px;font-size:12px}
+    .sign{display:flex;justify-content:space-between;gap:20px;margin-top:24px;font-size:12px;align-items:center}
     .sign div{flex:1}
-    .sline{display:inline-block;border-bottom:1px solid #333;min-width:130px;margin:0 4px}
+    .seal-ph{display:inline-block;width:52px;height:52px;border:1px dashed #bbb;border-radius:50%;text-align:center;line-height:52px;color:#bbb;font-size:11px;vertical-align:middle;margin-left:6px}
+    .sig-btn{display:inline-block;border:1px solid #4f46e5;color:#4f46e5;border-radius:6px;padding:6px 12px;margin-left:4px;cursor:pointer;font-size:12px}
     .print-btn{position:fixed;top:12px;right:12px;background:#4f46e5;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:bold;cursor:pointer}
-    @media print{.print-btn{display:none}}
+    #sigModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;align-items:center;justify-content:center;padding:16px}
+    .sig-card{background:#fff;border-radius:12px;padding:16px;width:min(94vw,560px)}
+    #sigCanvas{width:100%;height:220px;border:2px dashed #bbb;border-radius:8px;touch-action:none;background:#fafafa;display:block}
+    .sig-card button{padding:12px;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer;border:none}
+    .sig-clear{flex:1;background:#eee;color:#333}
+    .sig-save{flex:2;background:#4f46e5;color:#fff}
+    .sig-cancel{flex:1;background:#fff;border:1px solid #ccc !important;color:#666}
+    @media print{.print-btn,.sig-btn,#sigModal{display:none !important}}
   </style></head><body>
   <button class="print-btn" onclick="window.print()">🖨 인쇄 / PDF 저장</button>
   <h1>중 고 폰 매 매 계 약 서</h1>
@@ -178,7 +208,15 @@ function openContract({ store, cart, totalWon, totalQty, docNo }) {
       <p><b>대표자</b> ${esc(store.owner) || '&nbsp;'}</p>
       <p><b>연락처</b> ${esc(store.phone) || '&nbsp;'}</p>
       <p><b>주소</b> ${esc(store.addr) || '&nbsp;'}</p>
+      <p><b>정산계좌</b> ${esc((store.bank || '') + ' ' + (store.account || '')).trim() || '&nbsp;'}</p>
     </div>
+  </div>
+
+  <div class="deliv">
+    <b>${deliveryType === '픽업' ? '🏠 방문 픽업' : deliveryType === '택배' ? '🚚 택배 발송' : '배송'}</b>
+    ${deliveryType === '픽업'
+      ? ' · HK 인터네셔널이 방문 수거 (방문 시간 문자 안내)'
+      : ` · 발송지: ${esc(prices.addr)} <b>${esc(prices.source)}</b> ${esc(prices.tel)}`}
   </div>
 
   <table>
@@ -201,10 +239,43 @@ function openContract({ store, cart, totalWon, totalQty, docNo }) {
   </div>
 
   <div class="sign">
-    <div>매입자(갑) ${esc(prices.source)} <span class="sline"></span> (인)</div>
-    <div>판매자(을) <span class="sline"></span> (인)</div>
+    <div>매입자(갑) ${esc(prices.source)}
+      ${SEAL ? `<img src="${SEAL}" style="height:54px;vertical-align:middle;margin-left:6px">` : `<span class="seal-ph">직인</span>`}
+    </div>
+    <div>판매자(을) ${esc(store.owner) || ''}
+      <span id="sigSlot"><span class="sig-btn" onclick="openSig()">✍ 여기를 눌러 서명</span></span>
+      <img id="sellerSig" style="display:none;height:52px;vertical-align:middle;margin-left:4px"> (인)
+    </div>
   </div>
   <div style="text-align:center;margin-top:16px;color:#888;font-size:11px">${ymd}</div>
+
+  <div id="sigModal">
+    <div class="sig-card">
+      <div style="font-weight:bold;margin-bottom:8px">판매자 서명 <span style="font-weight:400;color:#888;font-size:12px">· 손가락/펜으로 서명하세요</span></div>
+      <canvas id="sigCanvas" width="600" height="260"></canvas>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="sig-clear" onclick="clearSig()">지우기</button>
+        <button class="sig-save" onclick="saveSig()">서명 완료</button>
+        <button class="sig-cancel" onclick="closeSig()">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    var canvas=document.getElementById('sigCanvas'), ctx=canvas.getContext('2d'), drawing=false, has=false, last=null;
+    ctx.lineWidth=3; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle='#111';
+    function pt(e){ var r=canvas.getBoundingClientRect(); return { x:(e.clientX-r.left)*canvas.width/r.width, y:(e.clientY-r.top)*canvas.height/r.height }; }
+    canvas.addEventListener('pointerdown', function(e){ drawing=true; has=true; last=pt(e); try{canvas.setPointerCapture(e.pointerId);}catch(_){} e.preventDefault(); });
+    canvas.addEventListener('pointermove', function(e){ if(!drawing)return; var q=pt(e); ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(q.x,q.y); ctx.stroke(); last=q; e.preventDefault(); });
+    canvas.addEventListener('pointerup', function(){ drawing=false; });
+    canvas.addEventListener('pointerleave', function(){ drawing=false; });
+    window.openSig=function(){ document.getElementById('sigModal').style.display='flex'; };
+    window.closeSig=function(){ document.getElementById('sigModal').style.display='none'; };
+    window.clearSig=function(){ ctx.clearRect(0,0,canvas.width,canvas.height); has=false; };
+    window.saveSig=function(){ if(!has){ alert('서명해 주세요.'); return; } var img=document.getElementById('sellerSig'); img.src=canvas.toDataURL('image/png'); img.style.display='inline-block'; document.getElementById('sigSlot').style.display='none'; document.getElementById('sigModal').style.display='none'; };
+  })();
+  </script>
   </body></html>`
 
   const w = window.open('', '_blank')

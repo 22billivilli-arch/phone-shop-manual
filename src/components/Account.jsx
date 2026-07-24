@@ -16,7 +16,7 @@ export default function Account({ auth, setAuth, onAuthChange }) {
 
 // ── 비로그인: 로그인 / 회원가입 ──
 function GuestAuth({ onAuthChange }) {
-  const [mode, setMode] = useState('login') // login | signup | admin
+  const [mode, setMode] = useState('login') // login | signup
   return (
     <div className="space-y-4">
       <div className="flex rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900">
@@ -27,14 +27,13 @@ function GuestAuth({ onAuthChange }) {
           </button>
         ))}
       </div>
-      {mode === 'login' && <LoginForm onAuthChange={onAuthChange} onAdmin={() => setMode('admin')} />}
+      {mode === 'login' && <LoginForm onAuthChange={onAuthChange} />}
       {mode === 'signup' && <SignupForm onAuthChange={onAuthChange} />}
-      {mode === 'admin' && <AdminLogin onAuthChange={onAuthChange} onBack={() => setMode('login')} />}
     </div>
   )
 }
 
-function LoginForm({ onAuthChange, onAdmin }) {
+function LoginForm({ onAuthChange }) {
   const [phone, setPhone] = useState('')
   const [pw, setPw] = useState('')
   const [err, setErr] = useState('')
@@ -47,33 +46,10 @@ function LoginForm({ onAuthChange, onAdmin }) {
   return (
     <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <h2 className="text-sm font-bold">거래처 로그인</h2>
-      <div><label className={label}>연락처</label><input className={input} value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="010-0000-0000" /></div>
-      <div><label className={label}>비밀번호</label><input className={input} type="password" value={pw} onChange={(e) => setPw(e.target.value)} /></div>
+      <div><label className={label}>아이디 (연락처)</label><input className={input} value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="010-0000-0000" /></div>
+      <div><label className={label}>비밀번호</label><input className={input} type="password" value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit()} /></div>
       {err && <p className="text-xs font-semibold text-rose-500">{err}</p>}
       <button className={btn + (busy ? ' bg-slate-400' : ' bg-indigo-600 active:bg-indigo-700')} onClick={submit} disabled={busy}>{busy ? '로그인 중…' : '로그인'}</button>
-      <button className="w-full text-center text-[11px] text-slate-400 underline" onClick={onAdmin}>관리자 로그인</button>
-    </section>
-  )
-}
-
-function AdminLogin({ onAuthChange, onBack }) {
-  const [user, setUser] = useState('')
-  const [pw, setPw] = useState('')
-  const [err, setErr] = useState('')
-  const [busy, setBusy] = useState(false)
-  const submit = async () => {
-    setErr(''); setBusy(true)
-    try { await api.post('admin_login.php', { user, password: pw }); await onAuthChange() }
-    catch (e) { setErr(e.message) } finally { setBusy(false) }
-  }
-  return (
-    <section className="space-y-3 rounded-2xl border border-slate-300 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/40">
-      <h2 className="text-sm font-bold">🔐 관리자 로그인</h2>
-      <div><label className={label}>아이디</label><input className={input} value={user} onChange={(e) => setUser(e.target.value)} /></div>
-      <div><label className={label}>비밀번호</label><input className={input} type="password" value={pw} onChange={(e) => setPw(e.target.value)} /></div>
-      {err && <p className="text-xs font-semibold text-rose-500">{err}</p>}
-      <button className={btn + (busy ? ' bg-slate-400' : ' bg-slate-800 active:bg-slate-900')} onClick={submit} disabled={busy}>{busy ? '확인 중…' : '관리자 로그인'}</button>
-      <button className="w-full text-center text-[11px] text-slate-400 underline" onClick={onBack}>← 거래처 로그인</button>
     </section>
   )
 }
@@ -100,36 +76,49 @@ function PhotoField({ title, hint, value, onPick }) {
 }
 
 function SignupForm({ onAuthChange }) {
-  const [f, setF] = useState({ name: '', phone: '', password: '', shop_name: '', shop_addr: '' })
+  const [f, setF] = useState({ name: '', phone: '', password: '', shop_name: '', shop_addr: '', bank_name: '', account_no: '' })
   const [idCard, setIdCard] = useState('')
   const [bankbook, setBankbook] = useState('')
   const [agree, setAgree] = useState(false)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
+  const filled = f.name.trim() && f.phone.trim() && f.password.trim() && f.shop_name.trim() && f.shop_addr.trim() && f.bank_name.trim() && f.account_no.trim() && idCard && bankbook && agree
   const submit = async () => {
+    if (!filled) { setErr('모든 항목은 필수입니다. 빠짐없이 입력·첨부하고 동의해 주세요.'); return }
     setErr(''); setBusy(true)
     try {
       await api.post('signup.php', { ...f, agree, id_card: idCard, bankbook })
       await onAuthChange()
     } catch (e) { setErr(e.message) } finally { setBusy(false) }
   }
+  const Req = () => <span className="text-rose-500">*</span>
   return (
     <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <h2 className="text-sm font-bold">거래처 회원가입</h2>
-      <div><label className={label}>이름 (대표자)</label><input className={input} value={f.name} onChange={set('name')} /></div>
-      <div><label className={label}>연락처 (로그인 아이디)</label><input className={input} value={f.phone} onChange={set('phone')} inputMode="tel" placeholder="010-0000-0000" /></div>
-      <div><label className={label}>비밀번호</label><input className={input} type="password" value={f.password} onChange={set('password')} /></div>
-      <div><label className={label}>매장명</label><input className={input} value={f.shop_name} onChange={set('shop_name')} /></div>
-      <div><label className={label}>매장 주소</label><input className={input} value={f.shop_addr} onChange={set('shop_addr')} /></div>
-      <PhotoField title="주민등록증 사진" hint="주민등록증 촬영/첨부" value={idCard} onPick={setIdCard} />
-      <PhotoField title="통장사본 사진" hint="통장사본 촬영/첨부" value={bankbook} onPick={setBankbook} />
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-bold">거래처 회원가입</h2>
+        <span className="text-[11px] text-rose-500">* 모든 항목 필수</span>
+      </div>
+      <div><label className={label}>이름 (대표자) <Req /></label><input className={input} value={f.name} onChange={set('name')} /></div>
+      <div><label className={label}>연락처 (로그인 아이디) <Req /></label><input className={input} value={f.phone} onChange={set('phone')} inputMode="tel" placeholder="010-0000-0000" /></div>
+      <div><label className={label}>비밀번호 <Req /></label><input className={input} type="password" value={f.password} onChange={set('password')} /></div>
+      <div><label className={label}>매장명 <Req /></label><input className={input} value={f.shop_name} onChange={set('shop_name')} /></div>
+      <div><label className={label}>매장 주소 <Req /></label><input className={input} value={f.shop_addr} onChange={set('shop_addr')} /></div>
+      <div className="grid grid-cols-3 gap-2">
+        <div><label className={label}>은행 <Req /></label><input className={input} value={f.bank_name} onChange={set('bank_name')} placeholder="예: 국민" /></div>
+        <div className="col-span-2"><label className={label}>계좌번호 <Req /></label><input className={input} value={f.account_no} onChange={set('account_no')} inputMode="numeric" placeholder="- 없이 숫자만" /></div>
+      </div>
+      <p className="-mt-1 rounded-lg bg-amber-50 px-2 py-1.5 text-[11px] text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">⚠️ 아래 첨부하는 <b>통장사본과 동일한 계좌</b>를 입력하세요. (정산 계좌)</p>
+      <PhotoField title={<>주민등록증 사진 <Req /></>} hint="주민등록증 촬영/첨부" value={idCard} onPick={setIdCard} />
+      <PhotoField title={<>통장사본 사진 <Req /></>} hint="통장사본 촬영/첨부" value={bankbook} onPick={setBankbook} />
       <label className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
         <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-4 w-4 accent-indigo-600" />
-        <span><b>[필수] 개인정보 수집·이용 동의</b><br />수집항목: 이름·연락처·매장정보·주민등록증·통장사본. 목적: 중고폰 매입 거래 및 정산·본인확인·장물방지. 보유: 거래 종료 후 관계법령에 따라 보관 후 파기. 사진은 비공개 저장되어 관리자만 열람합니다.</span>
+        <span><b>[필수] 개인정보 수집·이용 동의 <Req /></b><br />수집항목: 이름·연락처·매장정보·주민등록증·통장사본. 목적: 중고폰 매입 거래 및 정산·본인확인·장물방지. 보유: 거래 종료 후 관계법령에 따라 보관 후 파기. 사진은 비공개 저장되어 관리자만 열람합니다.</span>
       </label>
       {err && <p className="text-xs font-semibold text-rose-500">{err}</p>}
-      <button className={btn + (busy ? ' bg-slate-400' : ' bg-indigo-600 active:bg-indigo-700')} onClick={submit} disabled={busy}>{busy ? '가입 중…' : '가입하기'}</button>
+      <button className={btn + (busy || !filled ? ' bg-slate-300 dark:bg-slate-700' : ' bg-indigo-600 active:bg-indigo-700')} onClick={submit} disabled={busy || !filled}>
+        {busy ? '가입 중…' : filled ? '가입하기' : '모든 항목을 채워주세요'}
+      </button>
     </section>
   )
 }
@@ -148,6 +137,7 @@ function MemberHome({ member, setAuth, onAuthChange }) {
           <Row k="대표자" v={member.name} />
           <Row k="연락처" v={member.phone} />
           <Row k="매장 주소" v={member.shop_addr} />
+          <Row k="정산 계좌" v={`${member.bank_name || ''} ${member.account_no || ''}`.trim() || '-'} />
         </dl>
       </section>
       <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-3 text-[11px] leading-relaxed text-indigo-800 dark:border-indigo-500/40 dark:bg-indigo-500/10 dark:text-indigo-200">
@@ -205,6 +195,7 @@ function AdminMembers() {
                   <div className="min-w-0">
                     <div className="text-sm font-bold">{m.shop_name} <span className="text-[11px] font-normal text-slate-400">/ {m.name}</span></div>
                     <div className="text-[11px] text-slate-500">{m.phone} · {m.shop_addr}</div>
+                    <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">💳 {m.bank_name} {m.account_no}</div>
                     <div className="text-[10px] text-slate-400">가입 {String(m.created_at).slice(0, 10)}</div>
                   </div>
                   <button className="text-slate-400" onClick={() => setSel(sel === m.id ? null : m.id)}>{sel === m.id ? '▲' : '▼'}</button>

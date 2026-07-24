@@ -51,6 +51,7 @@ export default function Calculator({ onAdd }) {
 
   const addToCart = () => {
     if (!model || !onAdd) return
+    if (!imei.trim()) { setAdded(false); return }
     onAdd({
       id: Date.now() + '_' + Math.floor(Math.random() * 1e6),
       brand: model.brand, name: model.name, cap: model.cap, code: model.code || '',
@@ -171,11 +172,12 @@ export default function Calculator({ onAdd }) {
       {/* 담기 (출고 신청용 장바구니) */}
       {onAdd && (
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <label className="mb-1 block text-xs font-bold text-slate-500">IMEI <span className="text-rose-500">* 필수</span> <span className="font-normal text-slate-400">(*#06# 로 확인)</span></label>
           <div className="mb-2 flex items-center gap-2">
             <input
               value={imei}
               onChange={(e) => setImei(e.target.value)}
-              placeholder="IMEI (선택)"
+              placeholder="IMEI 입력 (필수)"
               inputMode="numeric"
               className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
             />
@@ -192,13 +194,13 @@ export default function Calculator({ onAdd }) {
           </div>
           <button
             onClick={addToCart}
-            disabled={!model}
+            disabled={!model || !imei.trim()}
             className={
               'w-full rounded-xl py-3 text-sm font-extrabold text-white transition-colors ' +
-              (added ? 'bg-emerald-600' : model ? 'bg-indigo-600 active:bg-indigo-700' : 'bg-slate-300 dark:bg-slate-700')
+              (added ? 'bg-emerald-600' : (model && imei.trim()) ? 'bg-indigo-600 active:bg-indigo-700' : 'bg-slate-300 dark:bg-slate-700')
             }
           >
-            {added ? '✓ 담겼습니다 (출고 신청 탭에서 확인)' : '🛒 출고 목록에 담기'}
+            {added ? '✓ 담겼습니다 (출고 신청 탭에서 확인)' : !model ? '모델을 먼저 선택하세요' : !imei.trim() ? 'IMEI를 입력하세요' : '🛒 출고 목록에 담기'}
           </button>
         </section>
       )}
