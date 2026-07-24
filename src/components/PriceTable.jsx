@@ -52,6 +52,7 @@ export default function PriceTable() {
       {/* 안내 배너 */}
       <div className="rounded-2xl border border-indigo-300 bg-indigo-50 p-3 text-[11px] leading-relaxed text-indigo-800 dark:border-indigo-500/40 dark:bg-indigo-500/10 dark:text-indigo-200">
         <b>{prices.source}</b> 매입 시세 (만원) · <b className="text-indigo-600 dark:text-indigo-300">{prices.updateNote}</b>
+        <div className="mt-1 font-bold text-emerald-700 dark:text-emerald-300">🚚 대구 전 지역 당일 방문 픽업 가능</div>
         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] opacity-90">
           <span><b className="text-emerald-600 dark:text-emerald-400">A</b>·<b className="text-sky-600 dark:text-sky-400">A-</b> 배90%↑</span>
           <span><b className="text-indigo-600 dark:text-indigo-400">B+</b> 배85%↑</span>
