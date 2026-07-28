@@ -31,10 +31,24 @@ const COLS_SAMSUNG = [
   { key: 'broken', label: '액파', cls: 'text-rose-500 dark:text-rose-400' },
 ]
 
+const FONT_STEPS = [12, 14, 16, 19, 22] // 표 글자 크기(px) 단계
+const FONT_KEY = 'psm_price_font'
+
 export default function PriceTable() {
   const [brand, setBrand] = useState('전체')
   const [q, setQ] = useState('')
   const [day, setDay] = useState('today') // today(금일) | prev(전일)
+  const [fontLv, setFontLv] = useState(() => {
+    const v = Number(typeof localStorage !== 'undefined' && localStorage.getItem(FONT_KEY))
+    return Number.isInteger(v) && v >= 0 && v < FONT_STEPS.length ? v : 1
+  })
+  const setFont = (lv) => {
+    const n = Math.max(0, Math.min(FONT_STEPS.length - 1, lv))
+    setFontLv(n)
+    try { localStorage.setItem(FONT_KEY, String(n)) } catch { /* noop */ }
+  }
+  const fs = FONT_STEPS[fontLv] // 본문 px
+  const capFs = Math.round(fs * 0.72) // 용량·코드 px
 
   const hasPrev = !!prices.prevModels && !!prices.prevDate
   const activeModels = day === 'prev' && hasPrev ? prices.prevModels : prices.models
@@ -117,9 +131,26 @@ export default function PriceTable() {
         />
       </div>
 
-      <p className="px-1 text-xs text-slate-500">
-        {total}개 · 단위 <b>만원</b> · 상태 차감 전 <b>최대 매입가</b>
-      </p>
+      <div className="flex items-center justify-between px-1">
+        <p className="text-xs text-slate-500">
+          {total}개 · 단위 <b>만원</b> · 차감 전 <b>최대가</b>
+        </p>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] font-semibold text-slate-400">글자</span>
+          <button
+            onClick={() => setFont(fontLv - 1)}
+            disabled={fontLv === 0}
+            aria-label="글자 작게"
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 text-lg font-bold text-slate-600 disabled:opacity-30 dark:border-slate-700 dark:text-slate-300"
+          >−</button>
+          <button
+            onClick={() => setFont(fontLv + 1)}
+            disabled={fontLv === FONT_STEPS.length - 1}
+            aria-label="글자 크게"
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 text-lg font-bold text-slate-600 disabled:opacity-30 dark:border-slate-700 dark:text-slate-300"
+          >＋</button>
+        </div>
+      </div>
 
       {groups.map((g) => {
         const cols = g.brand === '애플' ? COLS_APPLE : COLS_SAMSUNG
@@ -140,10 +171,10 @@ export default function PriceTable() {
                   {cols.map((c) => <col key={c.key} />)}
                 </colgroup>
                 <thead>
-                  <tr className="bg-slate-50 text-[10px] text-slate-500 dark:bg-slate-800/70 dark:text-slate-400">
-                    <th className="px-2 py-2 text-left font-semibold">모델</th>
+                  <tr className="bg-slate-50 text-slate-500 dark:bg-slate-800/70 dark:text-slate-400">
+                    <th className="px-2 py-2 text-left font-semibold" style={{ fontSize: Math.round(fs * 0.82) }}>모델</th>
                     {cols.map((c) => (
-                      <th key={c.key} className={'px-0 py-2 text-center font-bold ' + c.cls}>
+                      <th key={c.key} className={'px-0 py-2 text-center font-bold ' + c.cls} style={{ fontSize: Math.round(fs * 0.82) }}>
                         {c.label}
                       </th>
                     ))}
@@ -156,13 +187,14 @@ export default function PriceTable() {
                       className={'border-t border-slate-100 dark:border-slate-800 ' + (i % 2 ? 'bg-slate-50/40 dark:bg-slate-800/20' : '')}
                     >
                       <td className="px-2 py-2">
-                        <div className="truncate text-[11px] font-semibold leading-tight">{m.name}</div>
-                        <div className="truncate text-[9px] leading-tight text-slate-400">{m.cap}{m.code ? ' · ' + m.code : ''}</div>
+                        <div className="truncate font-semibold leading-tight" style={{ fontSize: fs }}>{m.name}</div>
+                        <div className="truncate leading-tight text-slate-400" style={{ fontSize: capFs }}>{m.cap}{m.code ? ' · ' + m.code : ''}</div>
                       </td>
                       {cols.map((c) => (
                         <td
                           key={c.key}
-                          className={'tnum px-0 py-2 text-center text-[11px] ' + c.cls + (c.bold ? ' font-bold' : '')}
+                          className={'tnum px-0 py-2 text-center ' + c.cls + (c.bold ? ' font-bold' : '')}
+                          style={{ fontSize: fs }}
                         >
                           {m[c.key] == null ? <span className="text-slate-300 dark:text-slate-700">·</span> : manwon(m[c.key])}
                         </td>
