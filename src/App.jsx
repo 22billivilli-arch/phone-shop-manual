@@ -56,7 +56,7 @@ export default function App() {
         {tab === 'prices' && <PriceTable />}
         {tab === 'manual' && <Manual />}
         {tab === 'calc' && <Calculator onAdd={addToCart} />}
-        {tab === 'cart' && <Cart cart={cart} setCart={setCart} auth={auth} />}
+        {tab === 'cart' && <Cart cart={cart} setCart={setCart} auth={auth} goTab={setTab} />}
         {tab === 'account' && <Account auth={auth} setAuth={setAuth} onAuthChange={loadAuth} />}
       </main>
 

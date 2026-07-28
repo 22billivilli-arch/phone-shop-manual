@@ -83,9 +83,9 @@ function SignupForm({ onAuthChange }) {
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
-  const filled = f.name.trim() && f.phone.trim() && f.password.trim() && f.shop_name.trim() && f.shop_addr.trim() && f.bank_name.trim() && f.account_no.trim() && idCard && bankbook && agree
+  const filled = f.name.trim() && f.phone.trim() && f.password.trim() && f.bank_name.trim() && f.account_no.trim() && idCard && agree
   const submit = async () => {
-    if (!filled) { setErr('모든 항목은 필수입니다. 빠짐없이 입력·첨부하고 동의해 주세요.'); return }
+    if (!filled) { setErr('* 표시 항목을 빠짐없이 입력·첨부하고 동의해 주세요.'); return }
     setErr(''); setBusy(true)
     try {
       await api.post('signup.php', { ...f, agree, id_card: idCard, bankbook })
@@ -97,20 +97,20 @@ function SignupForm({ onAuthChange }) {
     <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold">거래처 회원가입</h2>
-        <span className="text-[11px] text-rose-500">* 모든 항목 필수</span>
+        <span className="text-[11px] text-rose-500">* 표시는 필수</span>
       </div>
       <div><label className={label}>이름 (대표자) <Req /></label><input className={input} value={f.name} onChange={set('name')} /></div>
       <div><label className={label}>연락처 (로그인 아이디) <Req /></label><input className={input} value={f.phone} onChange={set('phone')} inputMode="tel" placeholder="010-0000-0000" /></div>
       <div><label className={label}>비밀번호 <Req /></label><input className={input} type="password" value={f.password} onChange={set('password')} /></div>
-      <div><label className={label}>매장명 <Req /></label><input className={input} value={f.shop_name} onChange={set('shop_name')} /></div>
-      <div><label className={label}>매장 주소 <Req /></label><input className={input} value={f.shop_addr} onChange={set('shop_addr')} /></div>
+      <div><label className={label}>매장명 <span className="text-slate-400">(업체만 기입)</span></label><input className={input} value={f.shop_name} onChange={set('shop_name')} /></div>
+      <div><label className={label}>매장 주소 <span className="text-slate-400">(업체만 기입)</span></label><input className={input} value={f.shop_addr} onChange={set('shop_addr')} /></div>
       <div className="grid grid-cols-3 gap-2">
         <div><label className={label}>은행 <Req /></label><input className={input} value={f.bank_name} onChange={set('bank_name')} placeholder="예: 국민" /></div>
         <div className="col-span-2"><label className={label}>계좌번호 <Req /></label><input className={input} value={f.account_no} onChange={set('account_no')} inputMode="numeric" placeholder="- 없이 숫자만" /></div>
       </div>
       <p className="-mt-1 rounded-lg bg-amber-50 px-2 py-1.5 text-[11px] text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">⚠️ 아래 첨부하는 <b>통장사본과 동일한 계좌</b>를 입력하세요. (정산 계좌)</p>
       <PhotoField title={<>주민등록증 사진 <Req /></>} hint="주민등록증 촬영/첨부" value={idCard} onPick={setIdCard} />
-      <PhotoField title={<>통장사본 사진 <Req /></>} hint="통장사본 촬영/첨부" value={bankbook} onPick={setBankbook} />
+      <PhotoField title={<>통장사본 사진 <span className="text-slate-400">(선택)</span></>} hint="통장사본 촬영/첨부" value={bankbook} onPick={setBankbook} />
       <label className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
         <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-4 w-4 accent-indigo-600" />
         <span><b>[필수] 개인정보 수집·이용 동의 <Req /></b><br />수집항목: 이름·연락처·매장정보·주민등록증·통장사본. 목적: 중고폰 매입 거래 및 정산·본인확인·장물방지. 보유: 거래 종료 후 관계법령에 따라 보관 후 파기. 사진은 비공개 저장되어 관리자만 열람합니다.</span>
@@ -162,12 +162,37 @@ function AdminPanel({ onAuthChange }) {
         <button className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-500 dark:border-slate-700" onClick={logout}>로그아웃</button>
       </div>
       <div className="flex rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900">
-        {[['members', '회원 목록'], ['orders', '출고 내역']].map(([k, t]) => (
+        {[['members', '회원 목록'], ['orders', '출고 내역'], ['inquiries', '바이어 문의']].map(([k, t]) => (
           <button key={k} onClick={() => setTab(k)}
             className={'flex-1 rounded-lg py-2 text-sm font-bold ' + (tab === k ? 'bg-indigo-600 text-white' : 'text-slate-500')}>{t}</button>
         ))}
       </div>
-      {tab === 'members' ? <AdminMembers /> : <AdminOrders />}
+      {tab === 'members' && <AdminMembers />}
+      {tab === 'orders' && <AdminOrders />}
+      {tab === 'inquiries' && <AdminInquiries />}
+    </div>
+  )
+}
+
+function AdminInquiries() {
+  const [rows, setRows] = useState(null)
+  useEffect(() => { api.get('admin_inquiries.php').then((r) => setRows(r.inquiries)).catch(() => setRows([])) }, [])
+  if (rows == null) return <p className="py-8 text-center text-sm text-slate-400">불러오는 중…</p>
+  return (
+    <div className="space-y-2">
+      <p className="px-1 text-xs text-slate-500">해외 바이어 문의 <b>{rows.length}</b>건 (수출 페이지)</p>
+      {rows.map((q) => (
+        <div key={q.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-bold">{q.name}{q.company ? <span className="text-[11px] font-normal text-slate-400"> · {q.company}</span> : null}{q.country ? <span className="text-[11px] font-normal text-slate-400"> · {q.country}</span> : null}</div>
+            <div className="text-[10px] text-slate-400">{String(q.created_at).slice(0, 16).replace('T', ' ')}</div>
+          </div>
+          <div className="mt-0.5 text-[12px] font-semibold text-indigo-600 dark:text-indigo-400">✉ {q.contact}</div>
+          {q.interest && <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">🔎 {q.interest}</div>}
+          {q.message && <div className="mt-1 whitespace-pre-wrap rounded-lg bg-slate-50 p-2 text-xs text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">{q.message}</div>}
+        </div>
+      ))}
+      {rows.length === 0 && <p className="py-8 text-center text-sm text-slate-400">아직 문의가 없습니다.</p>}
     </div>
   )
 }

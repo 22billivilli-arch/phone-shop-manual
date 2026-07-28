@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HK International — Used Phone Wholesale &amp; Export (Korea)</title>
+<style>
+  :root{--ground:#fbfcfb;--surface:#fff;--raise:#f4f7f4;--ink:#171a18;--muted:#6a756e;--faint:#9aa69e;--line:#e6ebe7;--line2:#d7ded9;--accent:#0c7a3b;--accent-press:#095e2d;--accent-ink:#0a5c32;--tint:#eaf6ef}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);
+    font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.55;letter-spacing:-.01em}
+  a{color:var(--accent);text-decoration:none}
+  .wrap{max-width:900px;margin:0 auto;padding:0 22px}
+  /* header */
+  header{position:sticky;top:0;z-index:20;background:rgba(251,252,251,.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .hbar{max-width:900px;margin:0 auto;padding:13px 22px;display:flex;align-items:center;justify-content:space-between}
+  .brand{display:flex;align-items:center;gap:10px}
+  .mk{width:30px;height:30px;border-radius:9px;background:var(--accent);display:flex;align-items:center;justify-content:center}
+  .mk svg{width:16px;height:16px}
+  .bname{font-size:16px;font-weight:800;letter-spacing:-.02em}
+  .hbar .cta{background:var(--accent);color:#fff;border-radius:9px;padding:8px 15px;font-size:13px;font-weight:700}
+  .hbar .back{font-size:12.5px;color:var(--muted);margin-right:2px}
+  /* hero */
+  .hero{padding:56px 0 40px;text-align:center}
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
+  h1{font-size:38px;font-weight:800;letter-spacing:-.04em;line-height:1.12;margin:0 0 14px;text-wrap:balance}
+  .hero p{font-size:16px;color:var(--muted);max-width:56ch;margin:0 auto 24px;line-height:1.7}
+  .btn{display:inline-block;background:var(--accent);color:#fff;border-radius:12px;padding:15px 30px;font-size:16px;font-weight:800;border:none;cursor:pointer}
+  .btn:hover{background:var(--accent-press)}
+  .btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line2);margin-left:8px}
+  /* stat strip */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:16px;overflow:hidden;margin:8px 0 8px}
+  @media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}}
+  .stats .c{background:var(--surface);padding:18px 14px;text-align:center}
+  .stats .v{font-size:22px;font-weight:800;letter-spacing:-.03em;color:var(--accent)}
+  .stats .k{font-size:12px;color:var(--muted);margin-top:3px}
+  /* sections */
+  section{padding:44px 0}
+  .sec-eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:8px;display:flex;align-items:center;gap:12px}
+  .sec-eyebrow .rule{height:1px;background:var(--line);flex:1}
+  h2{font-size:26px;font-weight:800;letter-spacing:-.03em;margin:0 0 18px;text-wrap:balance}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:720px){.grid3{grid-template-columns:1fr}}
+  .feat{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px}
+  .feat .ic{width:44px;height:44px;border-radius:12px;background:var(--tint);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:14px}
+  .feat h3{font-size:16px;font-weight:800;margin:0 0 6px}
+  .feat p{font-size:13.5px;color:var(--muted);line-height:1.7;margin:0}
+  /* about */
+  .about{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:26px 28px;display:grid;grid-template-columns:1.4fr 1fr;gap:24px;align-items:center}
+  @media(max-width:720px){.about{grid-template-columns:1fr}}
+  .about p{font-size:14.5px;color:var(--muted);line-height:1.8;margin:0 0 12px}
+  .about dl{margin:0;font-size:13.5px}
+  .about dl div{display:flex;gap:10px;padding:7px 0;border-top:1px solid var(--line)}
+  .about dt{width:82px;flex:none;color:var(--faint);font-weight:600}
+  .about dd{margin:0;font-weight:600}
+  /* form */
+  .formcard{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:28px;box-shadow:0 8px 30px -18px rgba(20,30,24,.2)}
+  .frow{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:560px){.frow{grid-template-columns:1fr}}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:7px}
+  .field label .req{color:#c0473f}
+  .field input,.field textarea{width:100%;border:1px solid var(--line2);border-radius:11px;background:var(--surface);color:var(--ink);padding:13px 14px;font-size:15px;outline:none;font-family:inherit;transition:border-color .15s, box-shadow .15s}
+  .field textarea{min-height:100px;resize:vertical}
+  .field input:focus-visible,.field textarea:focus-visible{border-color:var(--accent);box-shadow:0 0 0 3px var(--tint)}
+  .note{font-size:12px;color:var(--faint);margin-top:6px}
+  #inqMsg{margin-top:12px;font-size:14px;font-weight:700;display:none}
+  #inqMsg.ok{color:var(--accent);display:block} #inqMsg.err{color:#c0473f;display:block}
+  footer{border-top:1px solid var(--line);padding:26px 0 50px;text-align:center;color:var(--faint);font-size:13px;line-height:1.9}
+  footer b{color:var(--muted)}
+</style></head>
+<body>
+  <header><div class="hbar">
+    <div class="brand"><span class="mk"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-9Z" fill="#fff" opacity=".2"/><path d="M8 12h8M12 8v8" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg></span><span class="bname">HK International</span></div>
+    <div><a class="back" href="/">← Home</a> <a class="cta" href="#inquiry">Get a Quote</a></div>
+  </div></header>
+
+  <div class="wrap">
+    <div class="hero">
+      <div class="eyebrow">Used Phone Wholesale · Export from Korea</div>
+      <h1>Bulk used phones,<br>graded &amp; export-ready.</h1>
+      <p>HK International supplies wholesale used iPhone &amp; Samsung devices from South Korea to global buyers — carefully graded, IMEI-cleared, and shipped worldwide. Tell us what you need and we'll send a tailored quote.</p>
+      <a class="btn" href="#inquiry">Send an Inquiry</a>
+      <a class="btn ghost" href="#why">Why HK</a>
+    </div>
+
+    <div class="stats">
+      <div class="c"><div class="v">A–B+</div><div class="k">Clear grading</div></div>
+      <div class="c"><div class="v">100%</div><div class="k">IMEI checked</div></div>
+      <div class="c"><div class="v">Same-day</div><div class="k">Payment &amp; dispatch</div></div>
+      <div class="c"><div class="v">Worldwide</div><div class="k">Air / Sea shipping</div></div>
+    </div>
+
+    <section id="why">
+      <div class="sec-eyebrow">Why HK International <span class="rule"></span></div>
+      <h2>Reliable supply, buyer-friendly terms.</h2>
+      <div class="grid3">
+        <div class="feat"><div class="ic">🔍</div><h3>Honest grading</h3><p>Every unit inspected against a clear A / A- / B+ standard — screen, body, battery and function. No surprises on arrival.</p></div>
+        <div class="feat"><div class="ic">🛡️</div><h3>Clean &amp; verified</h3><p>All devices are IMEI-checked for lost/stolen and carrier status. Data wiped, iCloud / Google locks cleared before dispatch.</p></div>
+        <div class="feat"><div class="ic">📦</div><h3>Flexible volume</h3><p>From trial orders to regular bulk supply. We match grades and models to your market and target price.</p></div>
+        <div class="feat"><div class="ic">⚡</div><h3>Fast turnaround</h3><p>Same-day inspection and dispatch on confirmed orders. Tracking shared the moment it ships.</p></div>
+        <div class="feat"><div class="ic">✈️</div><h3>Worldwide shipping</h3><p>Air or sea freight to your destination. Export packing and documentation handled for you.</p></div>
+        <div class="feat"><div class="ic">🤝</div><h3>Direct communication</h3><p>Talk directly with our team by email or messenger — quick quotes, clear photos, straight answers.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-eyebrow">Company <span class="rule"></span></div>
+      <div class="about">
+        <div>
+          <p>HK International is a Korea-based wholesaler of used mobile phones, working with export buyers across Asia and beyond. We source, grade and consolidate stock domestically, then supply overseas partners at competitive wholesale terms.</p>
+          <p>We prefer long-term relationships — consistent grading, honest communication, and stock you can resell with confidence.</p>
+        </div>
+        <dl>
+          <div><dt>Based in</dt><dd>Daegu, South Korea</dd></div>
+          <div><dt>Deals in</dt><dd>iPhone · Samsung Galaxy</dd></div>
+          <div><dt>Grades</dt><dd>A / A- / B+ / for-parts</dd></div>
+          <div><dt>Shipping</dt><dd>Air &amp; Sea, worldwide</dd></div>
+          <div><dt>Contact</dt><dd>+82 10-3770-7254</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section id="inquiry">
+      <div class="sec-eyebrow">Buyer Inquiry <span class="rule"></span></div>
+      <h2>Request a quote</h2>
+      <p style="color:var(--muted);margin:-8px 0 20px;font-size:14.5px">Prices depend on model, grade and volume, so we quote per request. Send us the details and we'll reply with current offers.</p>
+      <div class="formcard">
+        <div class="frow">
+          <div class="field"><label>Name <span class="req">*</span></label><input id="f-name" placeholder="Your name"></div>
+          <div class="field"><label>Company</label><input id="f-company" placeholder="Company (optional)"></div>
+        </div>
+        <div class="frow">
+          <div class="field"><label>Country</label><input id="f-country" placeholder="e.g. Vietnam, UAE"></div>
+          <div class="field"><label>Email / Messenger <span class="req">*</span></label><input id="f-contact" placeholder="Email or WhatsApp"></div>
+        </div>
+        <div class="field"><label>Models &amp; quantity of interest</label><input id="f-interest" placeholder="e.g. iPhone 12/13, 200pcs, Grade A-"></div>
+        <div class="field"><label>Message</label><textarea id="f-message" placeholder="Tell us your target grades, price range, order size, shipping destination…"></textarea></div>
+        <button class="btn" style="width:100%" id="inqBtn" onclick="sendInquiry()">Send Inquiry</button>
+        <div id="inqMsg"></div>
+        <p class="note">By sending, you agree we may contact you about your inquiry. We don't share your details with third parties.</p>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <b>HK International</b> · Daegu, South Korea · +82 10-3770-7254<br>
+    Used phone wholesale &amp; export · <a href="/">← Back to home</a>
+  </footer>
+
+<script>
+  async function sendInquiry(){
+    var g=function(id){return (document.getElementById(id).value||'').trim();};
+    var name=g('f-name'), contact=g('f-contact');
+    var msg=document.getElementById('inqMsg');
+    if(!name || !contact){ msg.className='err'; msg.textContent='Please enter your name and contact.'; return; }
+    var btn=document.getElementById('inqBtn'); btn.disabled=true; var t=btn.textContent; btn.textContent='Sending…';
+    try{
+      var r=await fetch('/api/inquiry.php',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:name,company:g('f-company'),country:g('f-country'),contact:contact,interest:g('f-interest'),message:g('f-message')})});
+      var d=await r.json();
+      if(d.ok){ msg.className='ok'; msg.textContent='✓ Thank you! Your inquiry has been received. We will reply to '+contact+' soon.';
+        ['f-name','f-company','f-country','f-contact','f-interest','f-message'].forEach(function(id){document.getElementById(id).value='';});
+      } else { msg.className='err'; msg.textContent=d.error||'Something went wrong. Please try again.'; }
+    }catch(e){ msg.className='err'; msg.textContent='Network error. Please try again or contact us directly.'; }
+    btn.disabled=false; btn.textContent=t;
+  }
+</script>
+</body></html>

@@ -9,7 +9,7 @@ const toWon = (manwon) => Math.round((manwon || 0) * 10000)
 // 회사 직인 이미지 — 추후 제공받으면 여기에 base64 dataURL 을 넣으면 계약서 갑 서명란에 자동 표시됨
 const SEAL = ''
 
-export default function Cart({ cart, setCart, auth }) {
+export default function Cart({ cart, setCart, auth, goTab }) {
   const [store, setStore] = useLocalStorage('psm_store', { shop: '', owner: '', phone: '', addr: '', bank: '', account: '' })
   const [saved, setSaved] = useState('')
   const member = auth?.role === 'member' ? auth.member : null
@@ -28,23 +28,42 @@ export default function Cart({ cart, setCart, auth }) {
   const totalWon = useMemo(() => cart.reduce((s, it) => s + toWon(it.unit) * it.qty, 0), [cart])
   const totalQty = useMemo(() => cart.reduce((s, it) => s + it.qty, 0), [cart])
 
-  const submit = async (deliveryType) => {
+  const submit = (deliveryType) => {
     if (!cart.length) return
+    // 로그인(거래처) 필수 — 비로그인이면 회원 탭으로 유도
+    if (!member) {
+      alert('출고 신청은 거래처 로그인 후 이용할 수 있습니다.\n회원 탭에서 먼저 로그인해 주세요.')
+      goTab && goTab('account')
+      return
+    }
     const now = new Date()
     const docNo = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
-    let base
-    try {
-      await api.post('order_submit.php', { doc_no: docNo, store, items: cart, delivery_type: deliveryType })
-      base = deliveryType === '픽업'
-        ? '✅ 픽업 신청 완료! HK에서 방문 시간을 문자로 안내드립니다.'
-        : '✅ 택배 신청 완료! 아래 발송지로 보내주세요. (매입 자료 저장됨)'
-    } catch {
-      base = '※ 서버 저장은 안 됐지만(미연결) 계약서는 발행됩니다.'
-    }
-    setSaved(base)
+    // 매매계약서 창을 띄운다. 서명 후 [신청 완료]를 누르면 창이 부모로 payload 를 보내고,
+    // 부모(아래 message 리스너)가 서버로 전송한다.
     openContract({ store, cart, totalWon, totalQty, docNo, deliveryType })
-    setTimeout(() => setSaved(''), 8000)
   }
+
+  // 계약서 창 → 부모로 전송 요청 수신 → 서버 저장 + 성공 회신
+  useEffect(() => {
+    function onMsg(ev) {
+      const d = ev.data
+      if (!d || d.type !== 'hk-submit') return
+      const w = ev.source
+      const dt = d.payload?.delivery_type
+      api.post('order_submit.php', d.payload)
+        .then(() => {
+          if (w) w.postMessage({ type: 'hk-submit-ok' }, '*')
+          setCart([])
+          setSaved(dt === '픽업'
+            ? '✅ 픽업 신청 완료! 계약서가 HK로 전송되었습니다. 방문 시간을 문자로 안내드립니다.'
+            : '✅ 택배 신청 완료! 계약서가 HK로 전송되었습니다. 아래 발송지로 보내주세요.')
+          setTimeout(() => setSaved(''), 9000)
+        })
+        .catch(() => { if (w) w.postMessage({ type: 'hk-submit-err' }, '*') })
+    }
+    window.addEventListener('message', onMsg)
+    return () => window.removeEventListener('message', onMsg)
+  }, [])
 
   return (
     <div className="space-y-4">
@@ -146,6 +165,7 @@ function openContract({ store, cart, totalWon, totalQty, docNo, deliveryType }) 
   const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   const wonf = (n) => Math.round(n || 0).toLocaleString('ko-KR')
+  const payloadJson = JSON.stringify({ doc_no: docNo, store, items: cart, delivery_type: deliveryType }).replace(/</g, '\\u003c')
 
   const rows = cart.map((it, i) => {
     const unitWon = Math.round((it.unit || 0) * 10000)
@@ -183,7 +203,15 @@ function openContract({ store, cart, totalWon, totalQty, docNo, deliveryType }) 
     .sign div{flex:1}
     .seal-ph{display:inline-block;width:52px;height:52px;border:1px dashed #bbb;border-radius:50%;text-align:center;line-height:52px;color:#bbb;font-size:11px;vertical-align:middle;margin-left:6px}
     .sig-btn{display:inline-block;border:1px solid #4f46e5;color:#4f46e5;border-radius:6px;padding:6px 12px;margin-left:4px;cursor:pointer;font-size:12px}
-    .print-btn{position:fixed;top:12px;right:12px;background:#4f46e5;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:bold;cursor:pointer}
+    .topbar{position:fixed;top:12px;right:12px;display:flex;gap:8px;z-index:90}
+    .print-btn{background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:bold;cursor:pointer}
+    .submit-btn{background:#059669;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:bold;cursor:pointer}
+    .submit-btn:disabled{background:#9ca3af;cursor:default}
+    .done-banner{position:fixed;inset:0;background:rgba(255,255,255,.96);z-index:200;display:none;align-items:center;justify-content:center;text-align:center;padding:24px}
+    .done-banner .in{max-width:360px}
+    .done-banner h2{color:#059669;font-size:22px;margin:0 0 8px}
+    .done-banner p{color:#555;font-size:14px;line-height:1.6;margin:0 0 18px}
+    .done-banner button{background:#059669;color:#fff;border:none;border-radius:8px;padding:12px 22px;font-size:14px;font-weight:bold;cursor:pointer}
     #sigModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;align-items:center;justify-content:center;padding:16px}
     .sig-card{background:#fff;border-radius:12px;padding:16px;width:min(94vw,560px)}
     #sigCanvas{width:100%;height:220px;border:2px dashed #bbb;border-radius:8px;touch-action:none;background:#fafafa;display:block}
@@ -193,7 +221,15 @@ function openContract({ store, cart, totalWon, totalQty, docNo, deliveryType }) 
     .sig-cancel{flex:1;background:#fff;border:1px solid #ccc !important;color:#666}
     @media print{.print-btn,.sig-btn,#sigModal{display:none !important}}
   </style></head><body>
-  <button class="print-btn" onclick="window.print()">🖨 인쇄 / PDF 저장</button>
+  <div class="topbar">
+    <button class="print-btn" onclick="window.print()">🖨 인쇄</button>
+    <button class="submit-btn" id="submitBtn" onclick="submitOrder()">✅ 신청 완료</button>
+  </div>
+  <div class="done-banner" id="doneBanner"><div class="in">
+    <h2>✅ 신청 완료</h2>
+    <p>매매계약서가 HK 인터네셔널로 전송되었습니다.<br>담당자가 확인 후 연락드립니다.</p>
+    <button onclick="window.close()">창 닫기</button>
+  </div></div>
   <h1>중 고 폰 매 매 계 약 서</h1>
   <div class="meta">문서번호 ${docNo} · 작성일 ${ymd}</div>
 
@@ -273,8 +309,33 @@ function openContract({ store, cart, totalWon, totalQty, docNo, deliveryType }) 
     window.openSig=function(){ document.getElementById('sigModal').style.display='flex'; };
     window.closeSig=function(){ document.getElementById('sigModal').style.display='none'; };
     window.clearSig=function(){ ctx.clearRect(0,0,canvas.width,canvas.height); has=false; };
-    window.saveSig=function(){ if(!has){ alert('서명해 주세요.'); return; } var img=document.getElementById('sellerSig'); img.src=canvas.toDataURL('image/png'); img.style.display='inline-block'; document.getElementById('sigSlot').style.display='none'; document.getElementById('sigModal').style.display='none'; };
+    window.saveSig=function(){ if(!has){ alert('서명해 주세요.'); return; } window.__signed=true; var img=document.getElementById('sellerSig'); img.src=canvas.toDataURL('image/png'); img.style.display='inline-block'; document.getElementById('sigSlot').style.display='none'; document.getElementById('sigModal').style.display='none'; };
   })();
+
+  var PAYLOAD = ${payloadJson};
+  var __sent = false;
+  function submitOrder(){
+    if(!window.__signed){ alert('판매자 서명 후 [신청 완료]를 눌러주세요.\\n계약서의 "✍ 여기를 눌러 서명"을 먼저 진행하세요.'); return; }
+    if(__sent) return;
+    if(!window.opener){ alert('신청 창 연결이 끊겼습니다. 출고신청 화면에서 다시 시도해주세요.'); return; }
+    var btn=document.getElementById('submitBtn'); btn.disabled=true; btn.textContent='전송 중...';
+    // 서명이 반영된 계약서 HTML 을 정리해서 함께 전송(버튼/모달/스크립트 제거)
+    var clone=document.documentElement.cloneNode(true);
+    ['.topbar','.done-banner','#sigModal','script'].forEach(function(sel){
+      clone.querySelectorAll(sel).forEach(function(n){ n.remove(); });
+    });
+    var sigBtn=clone.querySelector('#sigSlot'); if(sigBtn) sigBtn.remove();
+    var contractHtml='<!doctype html>'+clone.outerHTML;
+    PAYLOAD.contract_html=contractHtml;
+    __sent=true;
+    window.opener.postMessage({ type:'hk-submit', payload:PAYLOAD }, '*');
+  }
+  window.submitOrder=submitOrder;
+  window.addEventListener('message', function(ev){
+    if(!ev.data) return;
+    if(ev.data.type==='hk-submit-ok'){ document.getElementById('doneBanner').style.display='flex'; }
+    else if(ev.data.type==='hk-submit-err'){ __sent=false; var b=document.getElementById('submitBtn'); b.disabled=false; b.textContent='✅ 신청 완료'; alert('전송에 실패했습니다. 네트워크 확인 후 다시 시도해주세요.'); }
+  });
   </script>
   </body></html>`
 

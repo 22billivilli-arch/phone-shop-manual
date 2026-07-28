@@ -34,6 +34,39 @@ function require_admin() {
   if (empty($_SESSION['is_admin'])) fail('관리자 권한이 필요합니다.', 403);
 }
 
+// ── 알림 ── (실패해도 요청 흐름을 막지 않음)
+function notify_email($subject, $html) {
+  if (!defined('NOTIFY_EMAIL') || !NOTIFY_EMAIL) return false;
+  $enc = '=?UTF-8?B?' . base64_encode($subject) . '?=';
+  $headers = "MIME-Version: 1.0\r\n"
+    . "Content-Type: text/html; charset=UTF-8\r\n"
+    . 'From: HK 인터네셔널 <' . MAIL_FROM . ">\r\n"
+    . 'Reply-To: ' . MAIL_FROM . "\r\n";
+  return @mail(NOTIFY_EMAIL, $enc, $html, $headers, '-f' . MAIL_FROM);
+}
+
+function notify_telegram($text) {
+  if (!defined('TELEGRAM_BOT_TOKEN') || !TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return false;
+  $url = 'https://api.telegram.org/bot' . TELEGRAM_BOT_TOKEN . '/sendMessage';
+  $payload = http_build_query([
+    'chat_id' => TELEGRAM_CHAT_ID,
+    'text' => $text,
+    'parse_mode' => 'HTML',
+    'disable_web_page_preview' => 'true',
+  ]);
+  $ch = curl_init($url);
+  curl_setopt_array($ch, [
+    CURLOPT_POST => true,
+    CURLOPT_POSTFIELDS => $payload,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT => 8,
+    CURLOPT_SSL_VERIFYPEER => false,
+  ]);
+  $res = curl_exec($ch);
+  curl_close($ch);
+  return $res;
+}
+
 // base64 dataURL 또는 업로드 이미지 → 리사이즈·압축 후 저장, 파일명 반환
 function save_image($dataUrl, $prefix) {
   if (!$dataUrl || !preg_match('#^data:image/(\w+);base64,#', $dataUrl, $m)) {

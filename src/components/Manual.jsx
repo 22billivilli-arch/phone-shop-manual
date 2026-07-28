@@ -154,10 +154,21 @@ function Quiz() {
 }
 
 export default function Manual() {
-  const { principles, grades, partCriteria, functionDeductions, prohibitions, tradeRules } = manual
+  const { principles, grades, partCriteria, functionDeductions, tradeRules } = manual
 
   return (
     <div className="space-y-8">
+      {/* 최고가 매입 보장 */}
+      <div className="flex items-center gap-3 rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-4 dark:border-emerald-500/40 dark:bg-emerald-500/10">
+        <span className="text-2xl">💰</span>
+        <div>
+          <p className="text-sm font-extrabold text-emerald-700 dark:text-emerald-300">최고가 매입 보장</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-emerald-800/80 dark:text-emerald-200/80">
+            저희보다 <b>더 비싼 매입처가 있다면 그 가격에 맞춰 드립니다.</b> 타사 견적을 알려주세요.
+          </p>
+        </div>
+      </div>
+
       {/* 1. 판정 원칙 */}
       <Section n="1" title="판정 원칙">
         <div className="space-y-2">
@@ -262,18 +273,6 @@ export default function Manual() {
       {/* 7. 판정 예시 */}
       <Section n="7" title="판정 예시">
         <Quiz />
-      </Section>
-
-      {/* 8. 금지 사항 */}
-      <Section n="8" title="금지 사항">
-        <div className="space-y-2">
-          {prohibitions.map((p, i) => (
-            <div key={i} className="flex items-center gap-2.5 rounded-xl border-2 border-red-300 bg-red-50 px-4 py-3 dark:border-red-500/40 dark:bg-red-500/10">
-              <span className="text-red-500">🚫</span>
-              <p className="text-sm font-bold text-red-700 dark:text-red-300">{p}</p>
-            </div>
-          ))}
-        </div>
       </Section>
     </div>
   )
