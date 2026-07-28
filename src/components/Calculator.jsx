@@ -47,6 +47,20 @@ export default function Calculator({ onAdd }) {
   const toggle = (id) => setChecked((c) => ({ ...c, [id]: !c[id] }))
   const pickModel = (v) => { setIdx(v); setChecked({}); setGrade('A'); setImei(''); setQty(1) }
 
+  // 모델 검색
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const norm = (s) => String(s || '').toLowerCase().replace(/\s+/g, '')
+  const filtered = useMemo(() => {
+    const q = norm(query)
+    const list = prices.models.map((m, i) => ({ m, i }))
+    if (!q) return list
+    return list.filter(({ m }) => norm(`${m.brand}${m.name}${m.cap}${m.code || ''}`).includes(q))
+  }, [query])
+  const labelOf = (m) => `[${m.brand}] ${m.name} · ${m.cap}${m.code ? ` (${m.code})` : ''}`
+  const selectModel = (i) => { pickModel(String(i)); setQuery(labelOf(prices.models[i])); setOpen(false) }
+  const clearModel = () => { setIdx(''); setQuery(''); setOpen(false) }
+
   const gradeMeta = grades.find((g) => g.key === grade) || prices.grades.find((g) => g.key === grade)
 
   const addToCart = () => {
@@ -69,20 +83,39 @@ export default function Calculator({ onAdd }) {
     <div className="space-y-4">
       {/* 입력 */}
       <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div>
-          <label className="mb-1 block text-xs font-bold text-slate-500">모델 · 용량 선택</label>
-          <select
-            value={idx}
-            onChange={(e) => pickModel(e.target.value)}
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm dark:border-slate-700 dark:bg-slate-900"
-          >
-            <option value="">모델을 선택하세요…</option>
-            {prices.models.map((m, i) => (
-              <option key={m.name + m.cap + i} value={i}>
-                [{m.brand}] {m.name} · {m.cap}{m.code ? ` (${m.code})` : ''}
-              </option>
-            ))}
-          </select>
+        <div className="relative">
+          <label className="mb-1 block text-xs font-bold text-slate-500">모델 · 용량 검색/선택</label>
+          <div className="relative">
+            <input
+              value={query}
+              onChange={(e) => { setQuery(e.target.value); setOpen(true); if (idx !== '') setIdx('') }}
+              onFocus={() => setOpen(true)}
+              onBlur={() => setTimeout(() => setOpen(false), 150)}
+              placeholder="🔍 모델명·용량 검색 (예: 15 pro, s24, 512)"
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-9 text-sm dark:border-slate-700 dark:bg-slate-900"
+            />
+            {query && (
+              <button onMouseDown={(e) => { e.preventDefault(); clearModel() }} aria-label="지우기"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-1.5 text-slate-400">✕</button>
+            )}
+          </div>
+          {open && (
+            <div className="absolute left-0 right-0 z-30 mt-1 max-h-72 overflow-auto rounded-xl border border-slate-300 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
+              {filtered.length === 0 ? (
+                <div className="px-3 py-3 text-center text-sm text-slate-400">검색 결과가 없어요</div>
+              ) : (
+                filtered.slice(0, 80).map(({ m, i }) => (
+                  <button
+                    key={m.name + m.cap + i}
+                    onMouseDown={(e) => { e.preventDefault(); selectModel(i) }}
+                    className={'block w-full border-b border-slate-100 px-3 py-2.5 text-left text-sm last:border-0 hover:bg-indigo-50 dark:border-slate-800 dark:hover:bg-slate-800 ' + (String(i) === idx ? 'bg-indigo-50 dark:bg-slate-800' : '')}
+                  >
+                    <span className="text-[11px] font-bold text-slate-400">[{m.brand}]</span> {m.name} <span className="text-slate-500">· {m.cap}</span>{m.code ? <span className="text-[11px] text-slate-400"> ({m.code})</span> : ''}
+                  </button>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
         <div>
