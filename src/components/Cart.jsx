@@ -183,6 +183,8 @@ function openContract({ store, cart, totalWon, totalQty, docNo, deliveryType }) 
 
   const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8">
   <title>중고폰 매매계약서 ${docNo}</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     *{box-sizing:border-box} body{font-family:'Malgun Gothic',sans-serif;color:#111;margin:0;padding:26px;font-size:13px;line-height:1.5}
     h1{text-align:center;font-size:22px;letter-spacing:8px;margin:0 0 4px}
@@ -314,21 +316,51 @@ function openContract({ store, cart, totalWon, totalQty, docNo, deliveryType }) 
 
   var PAYLOAD = ${payloadJson};
   var __sent = false;
-  function submitOrder(){
-    if(!window.__signed){ alert('판매자 서명 후 [신청 완료]를 눌러주세요.\\n계약서의 "✍ 여기를 눌러 서명"을 먼저 진행하세요.'); return; }
-    if(__sent) return;
-    if(!window.opener){ alert('신청 창 연결이 끊겼습니다. 출고신청 화면에서 다시 시도해주세요.'); return; }
-    var btn=document.getElementById('submitBtn'); btn.disabled=true; btn.textContent='전송 중...';
-    // 서명이 반영된 계약서 HTML 을 정리해서 함께 전송(버튼/모달/스크립트 제거)
+  function buildContractHtml(){
     var clone=document.documentElement.cloneNode(true);
     ['.topbar','.done-banner','#sigModal','script'].forEach(function(sel){
       clone.querySelectorAll(sel).forEach(function(n){ n.remove(); });
     });
     var sigBtn=clone.querySelector('#sigSlot'); if(sigBtn) sigBtn.remove();
-    var contractHtml='<!doctype html>'+clone.outerHTML;
-    PAYLOAD.contract_html=contractHtml;
+    return '<!doctype html>'+clone.outerHTML;
+  }
+  function sendPayload(extra){
+    PAYLOAD.contract_html=buildContractHtml();
+    if(extra && extra.pdf) PAYLOAD.contract_pdf=extra.pdf;
+    if(extra && extra.img) PAYLOAD.contract_image=extra.img;
     __sent=true;
     window.opener.postMessage({ type:'hk-submit', payload:PAYLOAD }, '*');
+  }
+  function canvasToPdf(cv){
+    try{
+      var JsPDF=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
+      if(!JsPDF) return null;
+      var img=cv.toDataURL('image/png');
+      var pdf=new JsPDF('p','mm','a4');
+      var pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight();
+      var iw=pw, ih=cv.height*pw/cv.width;
+      if(ih<=ph){ pdf.addImage(img,'PNG',0,0,iw,ih); }
+      else { var pos=0, rem=ih; while(rem>0){ pdf.addImage(img,'PNG',0,pos,iw,ih); rem-=ph; if(rem>0){ pdf.addPage(); pos-=ph; } } }
+      return pdf.output('datauristring');
+    }catch(e){ return null; }
+  }
+  function submitOrder(){
+    if(!window.__signed){ alert('판매자 서명 후 [신청 완료]를 눌러주세요.\\n계약서의 "✍ 여기를 눌러 서명"을 먼저 진행하세요.'); return; }
+    if(__sent) return;
+    if(!window.opener){ alert('신청 창 연결이 끊겼습니다. 출고신청 화면에서 다시 시도해주세요.'); return; }
+    var btn=document.getElementById('submitBtn'); btn.disabled=true; btn.textContent='전송 중...';
+    // 계약서를 캡처 → PDF 로 만들어 메일에 첨부
+    if(typeof html2canvas==='function'){
+      var tb=document.querySelector('.topbar'); if(tb) tb.style.visibility='hidden';
+      html2canvas(document.body,{backgroundColor:'#ffffff',scale:2,useCORS:true}).then(function(cv){
+        if(tb) tb.style.visibility='';
+        var pdf=canvasToPdf(cv);
+        var img=null; if(!pdf){ try{ img=cv.toDataURL('image/png'); }catch(e){} }
+        sendPayload({ pdf:pdf, img:img });
+      }).catch(function(){ if(tb) tb.style.visibility=''; sendPayload(null); });
+    } else {
+      sendPayload(null);
+    }
   }
   window.submitOrder=submitOrder;
   window.addEventListener('message', function(ev){

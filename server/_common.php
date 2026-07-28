@@ -35,14 +35,33 @@ function require_admin() {
 }
 
 // ── 알림 ── (실패해도 요청 흐름을 막지 않음)
-function notify_email($subject, $html) {
+// $attachments: [['name'=>'x.png','mime'=>'image/png','data'=>바이너리], ...]
+function notify_email($subject, $html, $attachments = []) {
   if (!defined('NOTIFY_EMAIL') || !NOTIFY_EMAIL) return false;
   $enc = '=?UTF-8?B?' . base64_encode($subject) . '?=';
-  $headers = "MIME-Version: 1.0\r\n"
+  $from = 'From: HK 인터네셔널 <' . MAIL_FROM . ">\r\n" . 'Reply-To: ' . MAIL_FROM . "\r\n";
+
+  if (empty($attachments)) {
+    $headers = "MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n" . $from;
+    return @mail(NOTIFY_EMAIL, $enc, $html, $headers, '-f' . MAIL_FROM);
+  }
+
+  $bound = 'hkbnd_' . bin2hex(random_bytes(10));
+  $headers = "MIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=\"$bound\"\r\n" . $from;
+  $body = "--$bound\r\n"
     . "Content-Type: text/html; charset=UTF-8\r\n"
-    . 'From: HK 인터네셔널 <' . MAIL_FROM . ">\r\n"
-    . 'Reply-To: ' . MAIL_FROM . "\r\n";
-  return @mail(NOTIFY_EMAIL, $enc, $html, $headers, '-f' . MAIL_FROM);
+    . "Content-Transfer-Encoding: base64\r\n\r\n"
+    . chunk_split(base64_encode($html)) . "\r\n";
+  foreach ($attachments as $a) {
+    $name = $a['name'];
+    $body .= "--$bound\r\n"
+      . "Content-Type: " . $a['mime'] . "; name=\"$name\"\r\n"
+      . "Content-Transfer-Encoding: base64\r\n"
+      . "Content-Disposition: attachment; filename=\"$name\"\r\n\r\n"
+      . chunk_split(base64_encode($a['data'])) . "\r\n";
+  }
+  $body .= "--$bound--";
+  return @mail(NOTIFY_EMAIL, $enc, $body, $headers, '-f' . MAIL_FROM);
 }
 
 function notify_telegram($text) {
