@@ -378,11 +378,12 @@ function ContractModal({ data, onClose, onSubmit }) {
 
       {/* 완료 오버레이 */}
       {done && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/96 p-6 text-center">
-          <div className="max-w-xs">
-            <div className="text-2xl font-extrabold text-emerald-600">✅ 신청 완료</div>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">매매계약서가 HK 인터네셔널로 전송되었습니다.<br />담당자가 확인 후 연락드립니다.</p>
-            <button onClick={onClose} className="mt-5 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white">확인</button>
+        <div className="absolute inset-0 z-30 flex items-center justify-center p-6 text-center" style={{ background: '#ffffff' }}>
+          <div className="w-full max-w-xs rounded-3xl border border-emerald-200 bg-emerald-50 px-6 py-8 shadow-lg">
+            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-600 text-3xl text-white">✓</div>
+            <div className="text-2xl font-extrabold text-emerald-700">신청 완료</div>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">매매계약서가 HK 인터네셔널로<br />전송되었습니다.<br />담당자가 확인 후 연락드립니다.</p>
+            <button onClick={onClose} className="mt-6 w-full rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-bold text-white active:bg-emerald-700">확인</button>
           </div>
         </div>
       )}
