@@ -189,7 +189,7 @@ function buildPaperHtml({ store, cart, totalWon, totalQty, docNo, deliveryType }
     .hkc .box b{display:inline-block;width:56px;color:#666}
     .hkc table{width:100%;border-collapse:collapse;margin-bottom:10px}
     .hkc th,.hkc td{border:1px solid #999;padding:6px 5px;font-size:12px}
-    .hkc th{background:#f0f0f0}
+    .hkc th{background:#f0f0f0;white-space:nowrap}
     .hkc td.c{text-align:center} .hkc td.r{text-align:right}
     .hkc tfoot td{font-weight:bold;background:#fafafa}
     .hkc .deliv{font-size:12px;color:#333;background:#f4f6ff;border:1px solid #ccd4ff;border-radius:6px;padding:8px 12px;margin-bottom:12px}
@@ -327,16 +327,15 @@ function ContractModal({ data, onClose, onSubmit }) {
 
       {/* 안내 */}
       {!signed && (
-        <div className="bg-amber-50 px-4 py-1.5 text-center text-[12px] font-semibold text-amber-700">아래 계약서에서 <b>✍ 서명</b> 후 우측 상단 <b>[신청 완료]</b>를 눌러주세요.</div>
+        <div className="bg-amber-50 px-4 py-1.5 text-center text-[12px] font-semibold text-amber-700">계약서에서 <b>✍ 서명</b> 후 우측 상단 <b>[신청 완료]</b>를 눌러주세요. <span className="text-amber-600">(좌우로 밀어 전체 확인)</span></div>
       )}
 
-      {/* 계약서 종이 */}
+      {/* 계약서 종이 (고정 폭 A4 — 모바일은 좌우 스크롤, 메일 PDF는 정상 문서) */}
       <div className="flex-1 overflow-auto bg-slate-200 p-3">
         <div
           ref={paperRef}
           onClick={onPaperClick}
-          className="mx-auto"
-          style={{ background: '#fff', padding: '22px', width: '760px', maxWidth: '100%', borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,.15)' }}
+          style={{ background: '#fff', padding: '22px', width: '760px', borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,.15)' }}
           dangerouslySetInnerHTML={{ __html: paperHtml }}
         />
         <div style={{ height: 20 }} />
