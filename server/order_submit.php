@@ -49,14 +49,14 @@ $pdf = (string) ($b['contract_pdf'] ?? '');
 $img = (string) ($b['contract_image'] ?? '');
 if (strpos($pdf, 'data:application/pdf') === 0) {
   $bin = base64_decode(substr($pdf, strpos($pdf, ',') + 1));
-  if ($bin !== false && strlen($bin) > 500) {
+  if ($bin !== false && strlen($bin) > 200) {
     $attachments[] = ['name' => 'contract_' . $docNo . '.pdf', 'mime' => 'application/pdf', 'data' => $bin];
     $attachKind = 'PDF';
   }
 }
 if (!$attachments && preg_match('#^data:image/png;base64,#', $img)) {
   $bin = base64_decode(substr($img, strpos($img, ',') + 1));
-  if ($bin !== false && strlen($bin) > 500) {
+  if ($bin !== false && strlen($bin) > 200) {
     $attachments[] = ['name' => 'contract_' . $docNo . '.png', 'mime' => 'image/png', 'data' => $bin];
     $attachKind = '이미지';
   }

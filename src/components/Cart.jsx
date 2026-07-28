@@ -1,10 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import html2canvas from 'html2canvas'
+import { jsPDF } from 'jspdf'
 import prices from '../data/prices.json'
 import { useLocalStorage, won } from '../lib/hooks'
 import { api } from '../lib/api'
 
 // 만원 → 원
 const toWon = (manwon) => Math.round((manwon || 0) * 10000)
+const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+const wonf = (n) => Math.round(n || 0).toLocaleString('ko-KR')
 
 // 회사 직인 이미지 — 추후 제공받으면 여기에 base64 dataURL 을 넣으면 계약서 갑 서명란에 자동 표시됨
 const SEAL = ''
@@ -12,6 +16,7 @@ const SEAL = ''
 export default function Cart({ cart, setCart, auth, goTab }) {
   const [store, setStore] = useLocalStorage('psm_store', { shop: '', owner: '', phone: '', addr: '', bank: '', account: '' })
   const [saved, setSaved] = useState('')
+  const [contract, setContract] = useState(null) // 계약서 모달 데이터
   const member = auth?.role === 'member' ? auth.member : null
 
   // 로그인한 거래처면 정보 자동 입력
@@ -28,9 +33,9 @@ export default function Cart({ cart, setCart, auth, goTab }) {
   const totalWon = useMemo(() => cart.reduce((s, it) => s + toWon(it.unit) * it.qty, 0), [cart])
   const totalQty = useMemo(() => cart.reduce((s, it) => s + it.qty, 0), [cart])
 
+  // 택배/픽업 → 로그인 확인 후 매매계약서 모달만 연다(알림 전송 없음)
   const submit = (deliveryType) => {
     if (!cart.length) return
-    // 로그인(거래처) 필수 — 비로그인이면 회원 탭으로 유도
     if (!member) {
       alert('출고 신청은 거래처 로그인 후 이용할 수 있습니다.\n회원 탭에서 먼저 로그인해 주세요.')
       goTab && goTab('account')
@@ -38,32 +43,22 @@ export default function Cart({ cart, setCart, auth, goTab }) {
     }
     const now = new Date()
     const docNo = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
-    // 매매계약서 창을 띄운다. 서명 후 [신청 완료]를 누르면 창이 부모로 payload 를 보내고,
-    // 부모(아래 message 리스너)가 서버로 전송한다.
-    openContract({ store, cart, totalWon, totalQty, docNo, deliveryType })
+    setContract({ store, cart, totalWon, totalQty, docNo, deliveryType })
   }
 
-  // 계약서 창 → 부모로 전송 요청 수신 → 서버 저장 + 성공 회신
-  useEffect(() => {
-    function onMsg(ev) {
-      const d = ev.data
-      if (!d || d.type !== 'hk-submit') return
-      const w = ev.source
-      const dt = d.payload?.delivery_type
-      api.post('order_submit.php', d.payload)
-        .then(() => {
-          if (w) w.postMessage({ type: 'hk-submit-ok' }, '*')
-          setCart([])
-          setSaved(dt === '픽업'
-            ? '✅ 픽업 신청 완료! 계약서가 HK로 전송되었습니다. 방문 시간을 문자로 안내드립니다.'
-            : '✅ 택배 신청 완료! 계약서가 HK로 전송되었습니다. 아래 발송지로 보내주세요.')
-          setTimeout(() => setSaved(''), 9000)
-        })
-        .catch(() => { if (w) w.postMessage({ type: 'hk-submit-err' }, '*') })
-    }
-    window.addEventListener('message', onMsg)
-    return () => window.removeEventListener('message', onMsg)
-  }, [])
+  // 계약서 [신청 완료] → 여기서 실제 서버 전송(메일+텔레)
+  const handleContractSubmit = async ({ pdf, img, contract_html }) => {
+    const d = contract
+    await api.post('order_submit.php', {
+      doc_no: d.docNo, store: d.store, items: d.cart, delivery_type: d.deliveryType,
+      contract_pdf: pdf, contract_image: img, contract_html,
+    })
+    setCart([])
+    setSaved(d.deliveryType === '픽업'
+      ? '✅ 픽업 신청 완료! 계약서가 HK로 전송되었습니다. 방문 시간을 문자로 안내드립니다.'
+      : '✅ 택배 신청 완료! 계약서가 HK로 전송되었습니다. 아래 발송지로 보내주세요.')
+    setTimeout(() => setSaved(''), 9000)
+  }
 
   return (
     <div className="space-y-4">
@@ -151,22 +146,22 @@ export default function Cart({ cart, setCart, auth, goTab }) {
             <button onClick={() => submit('택배')} className="rounded-xl bg-indigo-600 py-3.5 text-sm font-extrabold text-white active:bg-indigo-700">🚚 택배 신청</button>
             <button onClick={() => submit('픽업')} className="rounded-xl bg-emerald-600 py-3.5 text-sm font-extrabold text-white active:bg-emerald-700">🏠 픽업 신청</button>
           </div>
-          <p className="mt-1 text-center text-[11px] text-slate-500">두 버튼 모두 <b>매매계약서</b>가 함께 발행됩니다. 픽업은 대구 전 지역 당일 방문.</p>
+          <p className="mt-1 text-center text-[11px] text-slate-500">버튼을 누르면 <b>매매계약서</b> 작성 → 서명 → <b>신청 완료</b> 순서로 진행됩니다.</p>
           {saved && <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-center text-[12px] font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">{saved}</p>}
         </section>
+      )}
+
+      {contract && (
+        <ContractModal data={contract} onClose={() => setContract(null)} onSubmit={handleContractSubmit} />
       )}
     </div>
   )
 }
 
-// ── 매매계약서 (새 창 인쇄/PDF) ──
-function openContract({ store, cart, totalWon, totalQty, docNo, deliveryType }) {
+// ── 계약서 본문 HTML (툴바/스크립트 없이 캡처용) ──
+function buildPaperHtml({ store, cart, totalWon, totalQty, docNo, deliveryType }) {
   const now = new Date()
   const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  const wonf = (n) => Math.round(n || 0).toLocaleString('ko-KR')
-  const payloadJson = JSON.stringify({ doc_no: docNo, store, items: cart, delivery_type: deliveryType }).replace(/</g, '\\u003c')
-
   const rows = cart.map((it, i) => {
     const unitWon = Math.round((it.unit || 0) * 10000)
     return `<tr>
@@ -181,60 +176,29 @@ function openContract({ store, cart, totalWon, totalQty, docNo, deliveryType }) 
     </tr>`
   }).join('')
 
-  const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8">
-  <title>중고폰 매매계약서 ${docNo}</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <style>
-    *{box-sizing:border-box} body{font-family:'Malgun Gothic',sans-serif;color:#111;margin:0;padding:26px;font-size:13px;line-height:1.5}
-    h1{text-align:center;font-size:22px;letter-spacing:8px;margin:0 0 4px}
-    .meta{text-align:center;color:#666;font-size:11px;margin-bottom:18px}
-    .party{display:flex;gap:14px;margin-bottom:16px}
-    .box{flex:1;border:1px solid #333;border-radius:6px;padding:10px 12px}
-    .box h3{margin:0 0 6px;font-size:12px;color:#444;border-bottom:1px solid #ddd;padding-bottom:4px}
-    .box p{margin:3px 0;font-size:12px}
-    .box b{display:inline-block;width:56px;color:#666}
-    table{width:100%;border-collapse:collapse;margin-bottom:10px}
-    th,td{border:1px solid #999;padding:6px 5px;font-size:12px}
-    th{background:#f0f0f0}
-    td.c{text-align:center} td.r{text-align:right}
-    tfoot td{font-weight:bold;background:#fafafa}
-    .deliv{font-size:12px;color:#333;background:#f4f6ff;border:1px solid #ccd4ff;border-radius:6px;padding:8px 12px;margin-bottom:12px}
-    .terms{font-size:11px;color:#444;line-height:1.7;border:1px solid #ddd;border-radius:6px;padding:10px 12px;margin-bottom:18px}
-    .sign{display:flex;justify-content:space-between;gap:20px;margin-top:24px;font-size:12px;align-items:center}
-    .sign div{flex:1}
-    .seal-ph{display:inline-block;width:52px;height:52px;border:1px dashed #bbb;border-radius:50%;text-align:center;line-height:52px;color:#bbb;font-size:11px;vertical-align:middle;margin-left:6px}
-    .sig-btn{display:inline-block;border:1px solid #4f46e5;color:#4f46e5;border-radius:6px;padding:6px 12px;margin-left:4px;cursor:pointer;font-size:12px}
-    .topbar{position:fixed;top:12px;right:12px;display:flex;gap:8px;z-index:90}
-    .print-btn{background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:bold;cursor:pointer}
-    .submit-btn{background:#059669;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:bold;cursor:pointer}
-    .submit-btn:disabled{background:#9ca3af;cursor:default}
-    .done-banner{position:fixed;inset:0;background:rgba(255,255,255,.96);z-index:200;display:none;align-items:center;justify-content:center;text-align:center;padding:24px}
-    .done-banner .in{max-width:360px}
-    .done-banner h2{color:#059669;font-size:22px;margin:0 0 8px}
-    .done-banner p{color:#555;font-size:14px;line-height:1.6;margin:0 0 18px}
-    .done-banner button{background:#059669;color:#fff;border:none;border-radius:8px;padding:12px 22px;font-size:14px;font-weight:bold;cursor:pointer}
-    #sigModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;align-items:center;justify-content:center;padding:16px}
-    .sig-card{background:#fff;border-radius:12px;padding:16px;width:min(94vw,560px)}
-    #sigCanvas{width:100%;height:220px;border:2px dashed #bbb;border-radius:8px;touch-action:none;background:#fafafa;display:block}
-    .sig-card button{padding:12px;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer;border:none}
-    .sig-clear{flex:1;background:#eee;color:#333}
-    .sig-save{flex:2;background:#4f46e5;color:#fff}
-    .sig-cancel{flex:1;background:#fff;border:1px solid #ccc !important;color:#666}
-    @media print{.print-btn,.sig-btn,#sigModal{display:none !important}}
-  </style></head><body>
-  <div class="topbar">
-    <button class="print-btn" onclick="window.print()">🖨 인쇄</button>
-    <button class="submit-btn" id="submitBtn" onclick="submitOrder()">✅ 신청 완료</button>
-  </div>
-  <div class="done-banner" id="doneBanner"><div class="in">
-    <h2>✅ 신청 완료</h2>
-    <p>매매계약서가 HK 인터네셔널로 전송되었습니다.<br>담당자가 확인 후 연락드립니다.</p>
-    <button onclick="window.close()">창 닫기</button>
-  </div></div>
+  return `<style>
+    .hkc{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;color:#111;font-size:13px;line-height:1.5}
+    .hkc h1{text-align:center;font-size:22px;letter-spacing:8px;margin:0 0 4px;color:#111}
+    .hkc .meta{text-align:center;color:#666;font-size:11px;margin-bottom:18px}
+    .hkc .party{display:flex;gap:14px;margin-bottom:16px}
+    .hkc .box{flex:1;border:1px solid #333;border-radius:6px;padding:10px 12px}
+    .hkc .box h3{margin:0 0 6px;font-size:12px;color:#444;border-bottom:1px solid #ddd;padding-bottom:4px}
+    .hkc .box p{margin:3px 0;font-size:12px}
+    .hkc .box b{display:inline-block;width:56px;color:#666}
+    .hkc table{width:100%;border-collapse:collapse;margin-bottom:10px}
+    .hkc th,.hkc td{border:1px solid #999;padding:6px 5px;font-size:12px}
+    .hkc th{background:#f0f0f0}
+    .hkc td.c{text-align:center} .hkc td.r{text-align:right}
+    .hkc tfoot td{font-weight:bold;background:#fafafa}
+    .hkc .deliv{font-size:12px;color:#333;background:#f4f6ff;border:1px solid #ccd4ff;border-radius:6px;padding:8px 12px;margin-bottom:12px}
+    .hkc .terms{font-size:11px;color:#444;line-height:1.7;border:1px solid #ddd;border-radius:6px;padding:10px 12px;margin-bottom:18px}
+    .hkc .sign{display:flex;justify-content:space-between;gap:20px;margin-top:24px;font-size:12px;align-items:center}
+    .hkc .sign > div{flex:1}
+    .hkc .seal-ph{display:inline-block;width:52px;height:52px;border:1px dashed #bbb;border-radius:50%;text-align:center;line-height:52px;color:#bbb;font-size:11px;vertical-align:middle;margin-left:6px}
+    .hkc .sig-btn{display:inline-block;border:1px solid #4f46e5;color:#4f46e5;border-radius:6px;padding:6px 12px;margin-left:4px;cursor:pointer;font-size:12px}
+  </style>
   <h1>중 고 폰 매 매 계 약 서</h1>
   <div class="meta">문서번호 ${docNo} · 작성일 ${ymd}</div>
-
   <div class="party">
     <div class="box"><h3>매입자 (갑)</h3>
       <p><b>상호</b> ${esc(prices.source)}</p>
@@ -249,14 +213,12 @@ function openContract({ store, cart, totalWon, totalQty, docNo, deliveryType }) 
       <p><b>정산계좌</b> ${esc((store.bank || '') + ' ' + (store.account || '')).trim() || '&nbsp;'}</p>
     </div>
   </div>
-
   <div class="deliv">
     <b>${deliveryType === '픽업' ? '🏠 방문 픽업' : deliveryType === '택배' ? '🚚 택배 발송' : '배송'}</b>
     ${deliveryType === '픽업'
       ? ' · HK 인터네셔널이 방문 수거 (방문 시간 문자 안내)'
       : ` · 발송지: ${esc(prices.addr)} <b>${esc(prices.source)}</b> ${esc(prices.tel)}`}
   </div>
-
   <table>
     <thead><tr>
       <th style="width:32px">No</th><th>모델</th><th style="width:56px">용량</th><th style="width:50px">등급</th>
@@ -267,7 +229,6 @@ function openContract({ store, cart, totalWon, totalQty, docNo, deliveryType }) 
       <td colspan="5" class="r">합계</td><td class="c">${totalQty}</td><td></td><td class="r">${wonf(totalWon)}</td>
     </tr></tfoot>
   </table>
-
   <div class="terms">
     1. 을은 위 기기가 <b>분실·도난·할부금 미납 기기가 아님</b>을 보증하며, 사후 문제 발생 시 을이 책임진다.<br>
     2. 매입 단가는 검수 완료 후 등급·상태에 따라 조정될 수 있으며, 최종 금액은 검수 후 확정한다.<br>
@@ -275,104 +236,155 @@ function openContract({ store, cart, totalWon, totalQty, docNo, deliveryType }) 
     4. 기기의 데이터 초기화 및 계정(iCloud·Google) 잠금 해제는 을의 책임으로 한다.<br>
     5. 본 계약서는 매입 자료로 보관되며, 상기 내용에 상호 동의한다.
   </div>
-
   <div class="sign">
     <div>매입자(갑) ${esc(prices.source)}
       ${SEAL ? `<img src="${SEAL}" style="height:54px;vertical-align:middle;margin-left:6px">` : `<span class="seal-ph">직인</span>`}
     </div>
     <div>판매자(을) ${esc(store.owner) || ''}
-      <span id="sigSlot"><span class="sig-btn" onclick="openSig()">✍ 여기를 눌러 서명</span></span>
+      <span id="sigSlot"><span class="sig-btn">✍ 여기를 눌러 서명</span></span>
       <img id="sellerSig" style="display:none;height:52px;vertical-align:middle;margin-left:4px"> (인)
     </div>
   </div>
-  <div style="text-align:center;margin-top:16px;color:#888;font-size:11px">${ymd}</div>
+  <div style="text-align:center;margin-top:16px;color:#888;font-size:11px">${ymd}</div>`
+}
 
-  <div id="sigModal">
-    <div class="sig-card">
-      <div style="font-weight:bold;margin-bottom:8px">판매자 서명 <span style="font-weight:400;color:#888;font-size:12px">· 손가락/펜으로 서명하세요</span></div>
-      <canvas id="sigCanvas" width="600" height="260"></canvas>
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <button class="sig-clear" onclick="clearSig()">지우기</button>
-        <button class="sig-save" onclick="saveSig()">서명 완료</button>
-        <button class="sig-cancel" onclick="closeSig()">취소</button>
+// ── 매매계약서 모달 (앱 내 전체화면) ──
+function ContractModal({ data, onClose, onSubmit }) {
+  const paperRef = useRef(null)
+  const [showSig, setShowSig] = useState(false)
+  const [signed, setSigned] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [done, setDone] = useState(false)
+  const paperHtml = useMemo(() => buildPaperHtml(data), [data])
+
+  const onPaperClick = (e) => { if (e.target.closest('#sigSlot')) setShowSig(true) }
+
+  const applySignature = (dataUrl) => {
+    const root = paperRef.current
+    if (root) {
+      const img = root.querySelector('#sellerSig')
+      if (img) { img.src = dataUrl; img.style.display = 'inline-block' }
+      const slot = root.querySelector('#sigSlot')
+      if (slot) slot.style.display = 'none'
+    }
+    setSigned(true)
+    setShowSig(false)
+  }
+
+  const capture = async () => {
+    const cv = await html2canvas(paperRef.current, { backgroundColor: '#ffffff', scale: 2, useCORS: true })
+    const imgData = cv.toDataURL('image/png')
+    let pdf = null
+    try {
+      const doc = new jsPDF('p', 'mm', 'a4')
+      const pw = doc.internal.pageSize.getWidth(), ph = doc.internal.pageSize.getHeight()
+      const iw = pw, ih = cv.height * pw / cv.width
+      if (ih <= ph) doc.addImage(imgData, 'PNG', 0, 0, iw, ih)
+      else { let pos = 0, rem = ih; while (rem > 0) { doc.addImage(imgData, 'PNG', 0, pos, iw, ih); rem -= ph; if (rem > 0) { doc.addPage(); pos -= ph } } }
+      pdf = doc.output('datauristring')
+    } catch { /* PDF 실패 시 이미지로 폴백 */ }
+    return { pdf, img: pdf ? null : imgData }
+  }
+
+  const doSubmit = async () => {
+    if (!signed) { alert('판매자 서명을 먼저 해주세요. 계약서의 "✍ 여기를 눌러 서명"을 눌러 서명하세요.'); return }
+    if (sending) return
+    setSending(true)
+    let cap = { pdf: null, img: null }
+    try { cap = await capture() } catch { /* 캡처 실패해도 전송은 진행(HTML 폴백) */ }
+    try {
+      await onSubmit({ pdf: cap.pdf, img: cap.img, contract_html: '<!doctype html><meta charset="utf-8">' + (paperRef.current?.outerHTML || '') })
+      setDone(true)
+    } catch { alert('전송에 실패했습니다. 네트워크 확인 후 다시 시도해주세요.'); setSending(false) }
+  }
+
+  const savePdf = async () => {
+    try {
+      const cv = await html2canvas(paperRef.current, { backgroundColor: '#ffffff', scale: 2, useCORS: true })
+      const imgData = cv.toDataURL('image/png')
+      const doc = new jsPDF('p', 'mm', 'a4')
+      const pw = doc.internal.pageSize.getWidth(), ph = doc.internal.pageSize.getHeight()
+      const iw = pw, ih = cv.height * pw / cv.width
+      if (ih <= ph) doc.addImage(imgData, 'PNG', 0, 0, iw, ih)
+      else { let pos = 0, rem = ih; while (rem > 0) { doc.addImage(imgData, 'PNG', 0, pos, iw, ih); rem -= ph; if (rem > 0) { doc.addPage(); pos -= ph } } }
+      doc.save(`매매계약서_${data.docNo}.pdf`)
+    } catch { alert('PDF 저장에 실패했습니다.') }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-slate-800/70">
+      {/* 상단바 */}
+      <div className="flex items-center justify-between gap-2 bg-white px-3 py-2 shadow dark:bg-slate-900">
+        <button onClick={onClose} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold text-slate-600 dark:border-slate-600 dark:text-slate-300">✕ 닫기</button>
+        <div className="text-sm font-extrabold">매매계약서 작성</div>
+        <div className="flex gap-1.5">
+          <button onClick={savePdf} className="rounded-lg border border-indigo-300 bg-indigo-50 px-2.5 py-2 text-xs font-bold text-indigo-600">PDF저장</button>
+          <button onClick={doSubmit} disabled={sending} className={'rounded-lg px-3 py-2 text-sm font-extrabold text-white ' + (sending ? 'bg-slate-400' : 'bg-emerald-600 active:bg-emerald-700')}>{sending ? '전송 중…' : '✅ 신청 완료'}</button>
+        </div>
+      </div>
+
+      {/* 안내 */}
+      {!signed && (
+        <div className="bg-amber-50 px-4 py-1.5 text-center text-[12px] font-semibold text-amber-700">아래 계약서에서 <b>✍ 서명</b> 후 우측 상단 <b>[신청 완료]</b>를 눌러주세요.</div>
+      )}
+
+      {/* 계약서 종이 */}
+      <div className="flex-1 overflow-auto bg-slate-200 p-3">
+        <div
+          ref={paperRef}
+          onClick={onPaperClick}
+          className="mx-auto"
+          style={{ background: '#fff', padding: '22px', width: '760px', maxWidth: '100%', borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,.15)' }}
+          dangerouslySetInnerHTML={{ __html: paperHtml }}
+        />
+        <div style={{ height: 20 }} />
+      </div>
+
+      {/* 서명 패드 */}
+      {showSig && <SignaturePad onSave={applySignature} onCancel={() => setShowSig(false)} />}
+
+      {/* 완료 오버레이 */}
+      {done && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/96 p-6 text-center">
+          <div className="max-w-xs">
+            <div className="text-2xl font-extrabold text-emerald-600">✅ 신청 완료</div>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">매매계약서가 HK 인터네셔널로 전송되었습니다.<br />담당자가 확인 후 연락드립니다.</p>
+            <button onClick={onClose} className="mt-5 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white">확인</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── 터치 서명 패드 ──
+function SignaturePad({ onSave, onCancel }) {
+  const cRef = useRef(null)
+  const st = useRef({ drawing: false, has: false, last: null })
+  useEffect(() => {
+    const canvas = cRef.current, ctx = canvas.getContext('2d')
+    ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#111'
+    const pt = (e) => { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * canvas.width / r.width, y: (e.clientY - r.top) * canvas.height / r.height } }
+    const down = (e) => { const s = st.current; s.drawing = true; s.has = true; s.last = pt(e); try { canvas.setPointerCapture(e.pointerId) } catch (_) {} e.preventDefault() }
+    const move = (e) => { const s = st.current; if (!s.drawing) return; const q = pt(e); ctx.beginPath(); ctx.moveTo(s.last.x, s.last.y); ctx.lineTo(q.x, q.y); ctx.stroke(); s.last = q; e.preventDefault() }
+    const up = () => { st.current.drawing = false }
+    canvas.addEventListener('pointerdown', down); canvas.addEventListener('pointermove', move)
+    canvas.addEventListener('pointerup', up); canvas.addEventListener('pointerleave', up)
+    return () => { canvas.removeEventListener('pointerdown', down); canvas.removeEventListener('pointermove', move); canvas.removeEventListener('pointerup', up); canvas.removeEventListener('pointerleave', up) }
+  }, [])
+  const clear = () => { const c = cRef.current; c.getContext('2d').clearRect(0, 0, c.width, c.height); st.current.has = false }
+  const save = () => { if (!st.current.has) { alert('서명해 주세요.'); return } onSave(cRef.current.toDataURL('image/png')) }
+  return (
+    <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/55 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-4">
+        <div className="mb-2 font-bold">판매자 서명 <span className="text-xs font-normal text-slate-400">· 손가락/펜으로 서명하세요</span></div>
+        <canvas ref={cRef} width={600} height={260} style={{ width: '100%', height: 220, border: '2px dashed #bbb', borderRadius: 8, touchAction: 'none', background: '#fafafa', display: 'block' }} />
+        <div className="mt-3 flex gap-2">
+          <button onClick={clear} className="flex-1 rounded-lg bg-slate-100 py-3 text-sm font-bold text-slate-700">지우기</button>
+          <button onClick={save} className="flex-[2] rounded-lg bg-indigo-600 py-3 text-sm font-bold text-white">서명 완료</button>
+          <button onClick={onCancel} className="flex-1 rounded-lg border border-slate-300 py-3 text-sm font-bold text-slate-500">취소</button>
+        </div>
       </div>
     </div>
-  </div>
-
-  <script>
-  (function(){
-    var canvas=document.getElementById('sigCanvas'), ctx=canvas.getContext('2d'), drawing=false, has=false, last=null;
-    ctx.lineWidth=3; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle='#111';
-    function pt(e){ var r=canvas.getBoundingClientRect(); return { x:(e.clientX-r.left)*canvas.width/r.width, y:(e.clientY-r.top)*canvas.height/r.height }; }
-    canvas.addEventListener('pointerdown', function(e){ drawing=true; has=true; last=pt(e); try{canvas.setPointerCapture(e.pointerId);}catch(_){} e.preventDefault(); });
-    canvas.addEventListener('pointermove', function(e){ if(!drawing)return; var q=pt(e); ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(q.x,q.y); ctx.stroke(); last=q; e.preventDefault(); });
-    canvas.addEventListener('pointerup', function(){ drawing=false; });
-    canvas.addEventListener('pointerleave', function(){ drawing=false; });
-    window.openSig=function(){ document.getElementById('sigModal').style.display='flex'; };
-    window.closeSig=function(){ document.getElementById('sigModal').style.display='none'; };
-    window.clearSig=function(){ ctx.clearRect(0,0,canvas.width,canvas.height); has=false; };
-    window.saveSig=function(){ if(!has){ alert('서명해 주세요.'); return; } window.__signed=true; var img=document.getElementById('sellerSig'); img.src=canvas.toDataURL('image/png'); img.style.display='inline-block'; document.getElementById('sigSlot').style.display='none'; document.getElementById('sigModal').style.display='none'; };
-  })();
-
-  var PAYLOAD = ${payloadJson};
-  var __sent = false;
-  function buildContractHtml(){
-    var clone=document.documentElement.cloneNode(true);
-    ['.topbar','.done-banner','#sigModal','script'].forEach(function(sel){
-      clone.querySelectorAll(sel).forEach(function(n){ n.remove(); });
-    });
-    var sigBtn=clone.querySelector('#sigSlot'); if(sigBtn) sigBtn.remove();
-    return '<!doctype html>'+clone.outerHTML;
-  }
-  function sendPayload(extra){
-    PAYLOAD.contract_html=buildContractHtml();
-    if(extra && extra.pdf) PAYLOAD.contract_pdf=extra.pdf;
-    if(extra && extra.img) PAYLOAD.contract_image=extra.img;
-    __sent=true;
-    window.opener.postMessage({ type:'hk-submit', payload:PAYLOAD }, '*');
-  }
-  function canvasToPdf(cv){
-    try{
-      var JsPDF=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
-      if(!JsPDF) return null;
-      var img=cv.toDataURL('image/png');
-      var pdf=new JsPDF('p','mm','a4');
-      var pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight();
-      var iw=pw, ih=cv.height*pw/cv.width;
-      if(ih<=ph){ pdf.addImage(img,'PNG',0,0,iw,ih); }
-      else { var pos=0, rem=ih; while(rem>0){ pdf.addImage(img,'PNG',0,pos,iw,ih); rem-=ph; if(rem>0){ pdf.addPage(); pos-=ph; } } }
-      return pdf.output('datauristring');
-    }catch(e){ return null; }
-  }
-  function submitOrder(){
-    if(!window.__signed){ alert('판매자 서명 후 [신청 완료]를 눌러주세요.\\n계약서의 "✍ 여기를 눌러 서명"을 먼저 진행하세요.'); return; }
-    if(__sent) return;
-    if(!window.opener){ alert('신청 창 연결이 끊겼습니다. 출고신청 화면에서 다시 시도해주세요.'); return; }
-    var btn=document.getElementById('submitBtn'); btn.disabled=true; btn.textContent='전송 중...';
-    // 계약서를 캡처 → PDF 로 만들어 메일에 첨부
-    if(typeof html2canvas==='function'){
-      var tb=document.querySelector('.topbar'); if(tb) tb.style.visibility='hidden';
-      html2canvas(document.body,{backgroundColor:'#ffffff',scale:2,useCORS:true}).then(function(cv){
-        if(tb) tb.style.visibility='';
-        var pdf=canvasToPdf(cv);
-        var img=null; if(!pdf){ try{ img=cv.toDataURL('image/png'); }catch(e){} }
-        sendPayload({ pdf:pdf, img:img });
-      }).catch(function(){ if(tb) tb.style.visibility=''; sendPayload(null); });
-    } else {
-      sendPayload(null);
-    }
-  }
-  window.submitOrder=submitOrder;
-  window.addEventListener('message', function(ev){
-    if(!ev.data) return;
-    if(ev.data.type==='hk-submit-ok'){ document.getElementById('doneBanner').style.display='flex'; }
-    else if(ev.data.type==='hk-submit-err'){ __sent=false; var b=document.getElementById('submitBtn'); b.disabled=false; b.textContent='✅ 신청 완료'; alert('전송에 실패했습니다. 네트워크 확인 후 다시 시도해주세요.'); }
-  });
-  </script>
-  </body></html>`
-
-  const w = window.open('', '_blank')
-  if (!w) { alert('팝업이 차단되었습니다. 팝업 허용 후 다시 시도하세요.'); return }
-  w.document.write(html)
-  w.document.close()
+  )
 }
