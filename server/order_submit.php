@@ -54,10 +54,12 @@ if (strpos($pdf, 'data:application/pdf') === 0) {
     $attachKind = 'PDF';
   }
 }
-if (!$attachments && preg_match('#^data:image/png;base64,#', $img)) {
+if (!$attachments && preg_match('#^data:image/(png|jpe?g);base64,#', $img, $mm)) {
+  $ext = $mm[1] === 'png' ? 'png' : 'jpg';
+  $mime = $mm[1] === 'png' ? 'image/png' : 'image/jpeg';
   $bin = base64_decode(substr($img, strpos($img, ',') + 1));
   if ($bin !== false && strlen($bin) > 200) {
-    $attachments[] = ['name' => 'contract_' . $docNo . '.png', 'mime' => 'image/png', 'data' => $bin];
+    $attachments[] = ['name' => 'contract_' . $docNo . '.' . $ext, 'mime' => $mime, 'data' => $bin];
     $attachKind = '이미지';
   }
 }

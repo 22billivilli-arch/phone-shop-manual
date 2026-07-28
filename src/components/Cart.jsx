@@ -49,11 +49,11 @@ export default function Cart({ cart, setCart, auth, goTab }) {
   }
 
   // 계약서 [신청 완료] → 여기서 실제 서버 전송(메일+텔레)
-  const handleContractSubmit = async ({ pdf, img, contract_html }) => {
+  const handleContractSubmit = async ({ pdf, img }) => {
     const d = contract
     await api.post('order_submit.php', {
       doc_no: d.docNo, store: d.store, items: d.cart, delivery_type: d.deliveryType,
-      contract_pdf: pdf, contract_image: img, contract_html,
+      contract_pdf: pdf, contract_image: img,
     })
     setCart([])
     setSaved(d.deliveryType === '픽업'
@@ -289,19 +289,30 @@ function ContractModal({ data, onClose, onSubmit }) {
     setShowSig(false)
   }
 
+  // 카페24는 ~128KB 초과 POST 를 막으므로, JPEG 압축·단일페이지로 110KB 이하 PDF 생성
+  const LIMIT = 110000 // datauristring 문자수 목표
+  const makePdf = (cv, quality) => {
+    const jpeg = cv.toDataURL('image/jpeg', quality)
+    const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true })
+    const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight()
+    let iw = W, ih = cv.height * W / cv.width
+    if (ih > H) { ih = H; iw = cv.width * H / cv.height } // A4 한 장에 맞춤
+    doc.addImage(jpeg, 'JPEG', (W - iw) / 2, 0, iw, ih)
+    return { pdf: doc.output('datauristring'), jpeg }
+  }
   const capture = async () => {
-    const cv = await html2canvas(paperRef.current, { backgroundColor: '#ffffff', scale: 2, useCORS: true })
-    const imgData = cv.toDataURL('image/png')
-    let pdf = null
-    try {
-      const doc = new jsPDF('p', 'mm', 'a4')
-      const pw = doc.internal.pageSize.getWidth(), ph = doc.internal.pageSize.getHeight()
-      const iw = pw, ih = cv.height * pw / cv.width
-      if (ih <= ph) doc.addImage(imgData, 'PNG', 0, 0, iw, ih)
-      else { let pos = 0, rem = ih; while (rem > 0) { doc.addImage(imgData, 'PNG', 0, pos, iw, ih); rem -= ph; if (rem > 0) { doc.addPage(); pos -= ph } } }
-      pdf = doc.output('datauristring')
-    } catch { /* PDF 실패 시 이미지로 폴백 */ }
-    return { pdf, img: pdf ? null : imgData }
+    const cv = await html2canvas(paperRef.current, { backgroundColor: '#ffffff', scale: 1.6, useCORS: true })
+    let smallest = null
+    for (const q of [0.72, 0.6, 0.5, 0.4, 0.32]) {
+      let r
+      try { r = makePdf(cv, q) } catch { continue }
+      if (r.pdf.length < LIMIT) return { pdf: r.pdf, img: null }
+      smallest = r
+    }
+    // PDF 가 여전히 크면, 압축 JPEG 이미지 단독으로라도 첨부
+    if (smallest && smallest.jpeg.length < LIMIT) return { pdf: null, img: smallest.jpeg }
+    const j = cv.toDataURL('image/jpeg', 0.3)
+    return j.length < LIMIT ? { pdf: null, img: j } : { pdf: null, img: null }
   }
 
   const doSubmit = async () => {
@@ -309,9 +320,9 @@ function ContractModal({ data, onClose, onSubmit }) {
     if (sending) return
     setSending(true)
     let cap = { pdf: null, img: null }
-    try { cap = await capture() } catch { /* 캡처 실패해도 전송은 진행(HTML 폴백) */ }
+    try { cap = await capture() } catch { /* 캡처 실패해도 전송은 진행 */ }
     try {
-      await onSubmit({ pdf: cap.pdf, img: cap.img, contract_html: '<!doctype html><meta charset="utf-8">' + (paperRef.current?.outerHTML || '') })
+      await onSubmit({ pdf: cap.pdf, img: cap.img })
       setDone(true)
     } catch { alert('전송에 실패했습니다. 네트워크 확인 후 다시 시도해주세요.'); setSending(false) }
   }
