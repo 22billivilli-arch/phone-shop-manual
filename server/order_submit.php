@@ -83,9 +83,11 @@ if ($attachments) {
   notify_email($subject, $summary);
 }
 
-// 텔레그램: 간결하게 (새출고신청 / 매장명 / 몇대 예상매입가)
-$tg = "📤 <b>새 출고신청</b>\n"
-  . $e($sellerLabel) . "\n"
+// 텔레그램: 간결하게 (새출고신청·택배/픽업 / 이름 / 몇대 예상매입가)
+$deliveryLabel = $delivery ? $delivery . '신청' : '출고';
+$tgName = $owner ?: ($shop ?: '판매자');
+$tg = "📤 <b>새 출고신청</b> · " . $deliveryLabel . "\n"
+  . $e($tgName) . "\n"
   . $totalQty . "대 · 예상매입가 " . number_format($totalWon) . "원";
 notify_telegram($tg);
 
