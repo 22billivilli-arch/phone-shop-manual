@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import prices from '../data/prices.json'
 import { manwon } from '../lib/hooks'
 
-const BRANDS = ['전체', '애플', '삼성']
+const BRANDS = ['전체', '애플', '삼성', 'LG']
 
 // 날짜 MM/DD 표기
 const md = (d) => { const [, m, day] = String(d || '').split('-'); return m && day ? `${+m}/${+day}` : d }
@@ -122,7 +122,7 @@ export default function PriceTable() {
       </p>
 
       {groups.map((g) => {
-        const cols = g.brand === '삼성' ? COLS_SAMSUNG : COLS_APPLE
+        const cols = g.brand === '애플' ? COLS_APPLE : COLS_SAMSUNG
         return (
           <section key={g.series}>
             <div className="mb-1.5 flex items-center justify-between px-1">
@@ -136,7 +136,7 @@ export default function PriceTable() {
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <table className="w-full table-fixed border-collapse">
                 <colgroup>
-                  <col style={{ width: g.brand === '삼성' ? '28%' : '32%' }} />
+                  <col style={{ width: g.brand === '애플' ? '32%' : '28%' }} />
                   {cols.map((c) => <col key={c.key} />)}
                 </colgroup>
                 <thead>
