@@ -1,6 +1,4 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { toJpeg } from 'html-to-image'
-import { jsPDF } from 'jspdf'
 import prices from '../data/prices.json'
 import { useLocalStorage, won } from '../lib/hooks'
 import { api } from '../lib/api'
@@ -49,11 +47,11 @@ export default function Cart({ cart, setCart, auth, goTab }) {
   }
 
   // 계약서 [신청 완료] → 여기서 실제 서버 전송(메일+텔레)
-  const handleContractSubmit = async ({ pdf, img }) => {
+  const handleContractSubmit = async ({ signature }) => {
     const d = contract
     await api.post('order_submit.php', {
       doc_no: d.docNo, store: d.store, items: d.cart, delivery_type: d.deliveryType,
-      contract_pdf: pdf, contract_image: img,
+      signature,
     })
     setCart([])
     setSaved(d.deliveryType === '픽업'
@@ -275,9 +273,11 @@ function ContractModal({ data, onClose, onSubmit }) {
     return () => window.removeEventListener('resize', measure)
   }, [paperHtml, signed])
 
+  const sigDataRef = useRef(null)
   const onPaperClick = (e) => { if (e.target.closest('#sigSlot')) setShowSig(true) }
 
   const applySignature = (dataUrl) => {
+    sigDataRef.current = dataUrl
     const root = paperRef.current
     if (root) {
       const img = root.querySelector('#sellerSig')
@@ -289,61 +289,15 @@ function ContractModal({ data, onClose, onSubmit }) {
     setShowSig(false)
   }
 
-  // 캡처: 오프스크린에 원본 760px 로 렌더 → html-to-image(SVG foreignObject)로 JPG.
-  // 브라우저가 직접 렌더하므로 한글 글자 겹침 없음. (카페24 128KB POST 제한 → 110KB 이하로 압축)
-  const LIMIT = 110000
-  const makeHolder = () => {
-    const holder = document.createElement('div')
-    holder.className = 'hkc'
-    holder.style.cssText = "position:fixed;left:-10000px;top:0;width:760px;padding:22px;box-sizing:border-box;background:#ffffff;font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;"
-    holder.innerHTML = paperRef.current.innerHTML // <style> + 계약서 + 서명 포함
-    document.body.appendChild(holder)
-    return holder
-  }
-  const captureJpeg = async () => {
-    const holder = makeHolder()
-    try {
-      const h = holder.offsetHeight
-      let last = null
-      for (const [pr, q] of [[2, 0.82], [1.6, 0.72], [1.3, 0.6], [1.1, 0.5], [1, 0.4], [1, 0.3]]) {
-        const url = await toJpeg(holder, { quality: q, pixelRatio: pr, backgroundColor: '#ffffff', width: 760, height: h, cacheBust: true })
-        if (url.length < LIMIT) return url
-        last = url
-      }
-      return last // 마지막(가장 작은) 것 — 그래도 크면 서버가 요약본만 발송
-    } finally { document.body.removeChild(holder) }
-  }
-  const capture = async () => {
-    const img = await captureJpeg()
-    return { pdf: null, img: img && img.length < 130000 ? img : null }
-  }
-
   const doSubmit = async () => {
     if (!signed) { alert('판매자 서명을 먼저 해주세요. 계약서의 "✍ 여기를 눌러 서명"을 눌러 서명하세요.'); return }
     if (sending) return
     setSending(true)
-    let cap = { pdf: null, img: null }
-    try { cap = await capture() } catch { /* 캡처 실패해도 전송은 진행 */ }
     try {
-      await onSubmit({ pdf: cap.pdf, img: cap.img })
+      // 서명만 서버로 전송 → 서버가 계약서 HTML 을 생성해 메일 발송(브라우저 캡처 없음)
+      await onSubmit({ signature: sigDataRef.current })
       setDone(true)
     } catch { alert('전송에 실패했습니다. 네트워크 확인 후 다시 시도해주세요.'); setSending(false) }
-  }
-
-  const savePdf = async () => {
-    const holder = makeHolder()
-    try {
-      const h = holder.offsetHeight
-      const imgData = await toJpeg(holder, { quality: 0.95, pixelRatio: 2, backgroundColor: '#ffffff', width: 760, height: h, cacheBust: true })
-      const ratio = h / 760
-      const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true })
-      const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight()
-      let iw = W, ih = W * ratio
-      if (ih > H) { ih = H; iw = H / ratio }
-      doc.addImage(imgData, 'JPEG', (W - iw) / 2, 0, iw, ih)
-      doc.save(`매매계약서_${data.docNo}.pdf`)
-    } catch { alert('PDF 저장에 실패했습니다.') }
-    finally { document.body.removeChild(holder) }
   }
 
   return (
@@ -352,10 +306,7 @@ function ContractModal({ data, onClose, onSubmit }) {
       <div className="flex items-center justify-between gap-2 bg-white px-3 py-2 shadow dark:bg-slate-900">
         <button onClick={onClose} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold text-slate-600 dark:border-slate-600 dark:text-slate-300">✕ 닫기</button>
         <div className="text-sm font-extrabold">매매계약서 작성</div>
-        <div className="flex gap-1.5">
-          <button onClick={savePdf} className="rounded-lg border border-indigo-300 bg-indigo-50 px-2.5 py-2 text-xs font-bold text-indigo-600">PDF저장</button>
-          <button onClick={doSubmit} disabled={sending} className={'rounded-lg px-3 py-2 text-sm font-extrabold text-white ' + (sending ? 'bg-slate-400' : 'bg-emerald-600 active:bg-emerald-700')}>{sending ? '전송 중…' : '✅ 신청 완료'}</button>
-        </div>
+        <button onClick={doSubmit} disabled={sending} className={'rounded-lg px-4 py-2 text-sm font-extrabold text-white ' + (sending ? 'bg-slate-400' : 'bg-emerald-600 active:bg-emerald-700')}>{sending ? '전송 중…' : '✅ 신청 완료'}</button>
       </div>
 
       {/* 안내 */}

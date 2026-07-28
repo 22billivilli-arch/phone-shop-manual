@@ -64,6 +64,28 @@ function notify_email($subject, $html, $attachments = []) {
   return @mail(NOTIFY_EMAIL, $enc, $body, $headers, '-f' . MAIL_FROM);
 }
 
+// HTML 메일 + 인라인(CID) 이미지 — 서명을 본문에 표시. $inline: [['cid'=>..,'mime'=>..,'data'=>bin]]
+function notify_email_related($subject, $html, $inline = []) {
+  if (!defined('NOTIFY_EMAIL') || !NOTIFY_EMAIL) return false;
+  $enc = '=?UTF-8?B?' . base64_encode($subject) . '?=';
+  $from = 'From: HK 인터네셔널 <' . MAIL_FROM . ">\r\n" . 'Reply-To: ' . MAIL_FROM . "\r\n";
+  if (empty($inline)) {
+    $headers = "MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n" . $from;
+    return @mail(NOTIFY_EMAIL, $enc, $html, $headers, '-f' . MAIL_FROM);
+  }
+  $b = 'rel_' . bin2hex(random_bytes(10));
+  $headers = "MIME-Version: 1.0\r\nContent-Type: multipart/related; boundary=\"$b\"\r\n" . $from;
+  $body = "--$b\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n"
+    . chunk_split(base64_encode($html)) . "\r\n";
+  foreach ($inline as $im) {
+    $body .= "--$b\r\nContent-Type: " . $im['mime'] . "\r\nContent-Transfer-Encoding: base64\r\n"
+      . "Content-ID: <" . $im['cid'] . ">\r\nContent-Disposition: inline\r\n\r\n"
+      . chunk_split(base64_encode($im['data'])) . "\r\n";
+  }
+  $body .= "--$b--";
+  return @mail(NOTIFY_EMAIL, $enc, $body, $headers, '-f' . MAIL_FROM);
+}
+
 function notify_telegram($text) {
   if (!defined('TELEGRAM_BOT_TOKEN') || !TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return false;
   $url = 'https://api.telegram.org/bot' . TELEGRAM_BOT_TOKEN . '/sendMessage';
