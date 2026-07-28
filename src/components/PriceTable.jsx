@@ -4,10 +4,13 @@ import { manwon } from '../lib/hooks'
 
 const BRANDS = ['전체', '애플', '삼성']
 
+// 날짜 MM/DD 표기
+const md = (d) => { const [, m, day] = String(d || '').split('-'); return m && day ? `${+m}/${+day}` : d }
+
 // series 등장 순서 유지
-function seriesOrder() {
+function seriesOrder(models) {
   const seen = []
-  for (const m of prices.models) if (!seen.includes(m.series)) seen.push(m.series)
+  for (const m of models) if (!seen.includes(m.series)) seen.push(m.series)
   return seen
 }
 
@@ -31,27 +34,53 @@ const COLS_SAMSUNG = [
 export default function PriceTable() {
   const [brand, setBrand] = useState('전체')
   const [q, setQ] = useState('')
+  const [day, setDay] = useState('today') // today(금일) | prev(전일)
+
+  const hasPrev = !!prices.prevModels && !!prices.prevDate
+  const activeModels = day === 'prev' && hasPrev ? prices.prevModels : prices.models
+  const activeDate = day === 'prev' && hasPrev ? prices.prevDate : prices.baseDate
 
   const groups = useMemo(() => {
     const kw = q.trim().toLowerCase()
-    const filtered = prices.models.filter(
+    const filtered = activeModels.filter(
       (m) =>
         (brand === '전체' || m.brand === brand) &&
         (!kw || (m.name + ' ' + m.cap + ' ' + (m.code || '')).toLowerCase().includes(kw)),
     )
-    const order = seriesOrder()
+    const order = seriesOrder(activeModels)
     const map = {}
     for (const m of filtered) (map[m.series] ||= []).push(m)
     return order.filter((s) => map[s]).map((s) => ({ series: s, brand: map[s][0].brand, rows: map[s] }))
-  }, [brand, q])
+  }, [brand, q, day, activeModels])
 
   const total = groups.reduce((n, g) => n + g.rows.length, 0)
 
   return (
     <div className="space-y-4">
+      {/* 전일/금일 토글 */}
+      {hasPrev && (
+        <div className="flex items-center justify-center gap-2">
+          <div className="flex w-full max-w-xs rounded-full border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <button
+              onClick={() => setDay('prev')}
+              className={'flex-1 rounded-full py-2 text-sm font-bold transition-colors ' + (day === 'prev' ? 'bg-slate-700 text-white' : 'text-slate-500 dark:text-slate-400')}
+            >전일 {md(prices.prevDate)}</button>
+            <button
+              onClick={() => setDay('today')}
+              className={'flex-1 rounded-full py-2 text-sm font-bold transition-colors ' + (day === 'today' ? 'bg-indigo-600 text-white' : 'text-slate-500 dark:text-slate-400')}
+            >금일 {md(prices.baseDate)}</button>
+          </div>
+        </div>
+      )}
+      {day === 'prev' && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-center text-[12px] font-bold text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
+          📅 전일({md(prices.prevDate)}) 시세를 보고 있습니다 — 매입은 금일 시세 기준입니다.
+        </div>
+      )}
+
       {/* 안내 배너 */}
       <div className="rounded-2xl border border-indigo-300 bg-indigo-50 p-3 text-[11px] leading-relaxed text-indigo-800 dark:border-indigo-500/40 dark:bg-indigo-500/10 dark:text-indigo-200">
-        <b>{prices.source}</b> 매입 시세 (만원) · <b className="text-indigo-600 dark:text-indigo-300">{prices.updateNote}</b>
+        <b>{prices.source}</b> 매입 시세 (만원) · 기준일 <b className="text-indigo-600 dark:text-indigo-300">{activeDate}</b> · <b className="text-indigo-600 dark:text-indigo-300">{prices.updateNote}</b>
         <div className="mt-1 font-bold text-emerald-700 dark:text-emerald-300">🚚 대구 전 지역 당일 방문 픽업 가능</div>
         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] opacity-90">
           <span><b className="text-emerald-600 dark:text-emerald-400">A</b>·<b className="text-sky-600 dark:text-sky-400">A-</b> 배90%↑</span>
