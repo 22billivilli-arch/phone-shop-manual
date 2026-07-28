@@ -18,6 +18,7 @@ export default function Cart({ cart, setCart, auth, goTab }) {
   const [saved, setSaved] = useState('')
   const [contract, setContract] = useState(null) // 계약서 모달 데이터
   const member = auth?.role === 'member' ? auth.member : null
+  const isAdmin = auth?.role === 'admin'
 
   // 로그인한 거래처면 정보 자동 입력
   useEffect(() => {
@@ -36,7 +37,8 @@ export default function Cart({ cart, setCart, auth, goTab }) {
   // 택배/픽업 → 로그인 확인 후 매매계약서 모달만 연다(알림 전송 없음)
   const submit = (deliveryType) => {
     if (!cart.length) return
-    if (!member) {
+    // 거래처(member) 또는 관리자(admin)만 신청 가능. 비로그인은 회원 탭으로 유도.
+    if (!member && !isAdmin) {
       alert('출고 신청은 거래처 로그인 후 이용할 수 있습니다.\n회원 탭에서 먼저 로그인해 주세요.')
       goTab && goTab('account')
       return
