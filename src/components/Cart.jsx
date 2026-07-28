@@ -353,6 +353,7 @@ function ContractModal({ data, onClose, onSubmit }) {
             <div
               ref={paperRef}
               onClick={onPaperClick}
+              className="hkc"
               style={{ background: '#fff', padding: '22px', width: 760, boxSizing: 'border-box', borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,.15)' }}
               dangerouslySetInnerHTML={{ __html: paperHtml }}
             />
