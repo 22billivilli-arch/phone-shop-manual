@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import prices from '../data/prices.json'
@@ -253,11 +253,27 @@ function buildPaperHtml({ store, cart, totalWon, totalQty, docNo, deliveryType }
 // ── 매매계약서 모달 (앱 내 전체화면) ──
 function ContractModal({ data, onClose, onSubmit }) {
   const paperRef = useRef(null)
+  const scrollRef = useRef(null)
   const [showSig, setShowSig] = useState(false)
   const [signed, setSigned] = useState(false)
   const [sending, setSending] = useState(false)
   const [done, setDone] = useState(false)
+  const [fit, setFit] = useState({ scale: 1, h: 0 })
   const paperHtml = useMemo(() => buildPaperHtml(data), [data])
+
+  // 계약서(760px)를 화면 폭에 맞춰 축소 표시 (구조·비율 유지, 캡처는 원본)
+  useLayoutEffect(() => {
+    const measure = () => {
+      const sc = scrollRef.current, paper = paperRef.current
+      if (!sc || !paper) return
+      const avail = sc.clientWidth - 24
+      const scale = Math.min(1, avail / 760)
+      setFit({ scale, h: paper.offsetHeight * scale })
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [paperHtml, signed])
 
   const onPaperClick = (e) => { if (e.target.closest('#sigSlot')) setShowSig(true) }
 
@@ -327,17 +343,21 @@ function ContractModal({ data, onClose, onSubmit }) {
 
       {/* 안내 */}
       {!signed && (
-        <div className="bg-amber-50 px-4 py-1.5 text-center text-[12px] font-semibold text-amber-700">계약서에서 <b>✍ 서명</b> 후 우측 상단 <b>[신청 완료]</b>를 눌러주세요. <span className="text-amber-600">(좌우로 밀어 전체 확인)</span></div>
+        <div className="bg-amber-50 px-4 py-1.5 text-center text-[12px] font-semibold text-amber-700">계약서에서 <b>✍ 서명</b> 후 우측 상단 <b>[신청 완료]</b>를 눌러주세요.</div>
       )}
 
-      {/* 계약서 종이 (고정 폭 A4 — 모바일은 좌우 스크롤, 메일 PDF는 정상 문서) */}
-      <div className="flex-1 overflow-auto bg-slate-200 p-3">
-        <div
-          ref={paperRef}
-          onClick={onPaperClick}
-          style={{ background: '#fff', padding: '22px', width: '760px', borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,.15)' }}
-          dangerouslySetInnerHTML={{ __html: paperHtml }}
-        />
+      {/* 계약서 종이 — 화면 폭에 맞춰 축소 표시(표 구조 유지), 캡처/PDF는 원본 760px */}
+      <div ref={scrollRef} className="flex-1 overflow-auto bg-slate-200 p-3">
+        <div style={{ width: fit.scale ? 760 * fit.scale : '100%', height: fit.h || undefined, margin: '0 auto', overflow: 'hidden' }}>
+          <div style={{ width: 760, transform: `scale(${fit.scale})`, transformOrigin: 'top left' }}>
+            <div
+              ref={paperRef}
+              onClick={onPaperClick}
+              style={{ background: '#fff', padding: '22px', width: 760, boxSizing: 'border-box', borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,.15)' }}
+              dangerouslySetInnerHTML={{ __html: paperHtml }}
+            />
+          </div>
+        </div>
         <div style={{ height: 20 }} />
       </div>
 
