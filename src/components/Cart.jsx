@@ -41,6 +41,13 @@ export default function Cart({ cart, setCart, auth, goTab }) {
       goTab && goTab('account')
       return
     }
+    // 필수: 대표자명·연락처·은행·계좌번호
+    const miss = []
+    if (!store.owner.trim()) miss.push('대표자명')
+    if (!store.phone.trim()) miss.push('연락처')
+    if (!store.bank.trim()) miss.push('은행')
+    if (!store.account.trim()) miss.push('계좌번호')
+    if (miss.length) { alert('거래처 정보의 필수 항목을 입력해 주세요:\n· ' + miss.join(', ')); return }
     const now = new Date()
     const docNo = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
     setContract({ store, cart, totalWon, totalQty, docNo, deliveryType })
@@ -70,13 +77,14 @@ export default function Cart({ cart, setCart, auth, goTab }) {
       <section className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h2 className="text-sm font-bold">거래처(판매자) 정보</h2>
         <div className="grid grid-cols-2 gap-2">
-          <input value={store.shop} onChange={(e) => setField('shop', e.target.value)} placeholder="매장명" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
-          <input value={store.owner} onChange={(e) => setField('owner', e.target.value)} placeholder="대표자명" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
-          <input value={store.phone} onChange={(e) => setField('phone', e.target.value)} placeholder="연락처" inputMode="tel" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
-          <input value={store.addr} onChange={(e) => setField('addr', e.target.value)} placeholder="매장 주소" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
-          <input value={store.bank} onChange={(e) => setField('bank', e.target.value)} placeholder="은행" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
-          <input value={store.account} onChange={(e) => setField('account', e.target.value)} placeholder="계좌번호" inputMode="numeric" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
+          <input value={store.shop} onChange={(e) => setField('shop', e.target.value)} placeholder="매장명 (업체만)" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
+          <input value={store.owner} onChange={(e) => setField('owner', e.target.value)} placeholder="대표자명 *" className={'rounded-xl border bg-white px-3 py-2 text-sm dark:bg-slate-900 ' + (store.owner.trim() ? 'border-slate-300 dark:border-slate-700' : 'border-rose-300 dark:border-rose-500/50')} />
+          <input value={store.phone} onChange={(e) => setField('phone', e.target.value)} placeholder="연락처 *" inputMode="tel" className={'rounded-xl border bg-white px-3 py-2 text-sm dark:bg-slate-900 ' + (store.phone.trim() ? 'border-slate-300 dark:border-slate-700' : 'border-rose-300 dark:border-rose-500/50')} />
+          <input value={store.addr} onChange={(e) => setField('addr', e.target.value)} placeholder="매장 주소 (업체만)" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
+          <input value={store.bank} onChange={(e) => setField('bank', e.target.value)} placeholder="은행 *" className={'rounded-xl border bg-white px-3 py-2 text-sm dark:bg-slate-900 ' + (store.bank.trim() ? 'border-slate-300 dark:border-slate-700' : 'border-rose-300 dark:border-rose-500/50')} />
+          <input value={store.account} onChange={(e) => setField('account', e.target.value)} placeholder="계좌번호 *" inputMode="numeric" className={'rounded-xl border bg-white px-3 py-2 text-sm dark:bg-slate-900 ' + (store.account.trim() ? 'border-slate-300 dark:border-slate-700' : 'border-rose-300 dark:border-rose-500/50')} />
         </div>
+        <p className="px-1 text-[11px] text-rose-500"><b>*</b> 대표자명 · 연락처 · 은행 · 계좌번호는 <b>필수</b>입니다.</p>
         <p className="rounded-lg bg-amber-50 px-2 py-1.5 text-[11px] text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">💳 정산 계좌는 <b>가입 시 등록한 통장사본과 동일한 계좌</b>여야 합니다.</p>
         <p className="text-[11px] text-slate-400">※ 로그인하면 위 정보가 자동 입력됩니다.</p>
       </section>
