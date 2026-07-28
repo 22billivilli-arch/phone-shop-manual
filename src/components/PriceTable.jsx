@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import prices from '../data/prices.json'
 import { manwon } from '../lib/hooks'
 
-const BRANDS = ['전체', '애플', '삼성', 'LG']
+const BRANDS = ['전체', '애플', '삼성']
 
 // 날짜 MM/DD 표기
 const md = (d) => { const [, m, day] = String(d || '').split('-'); return m && day ? `${+m}/${+day}` : d }
